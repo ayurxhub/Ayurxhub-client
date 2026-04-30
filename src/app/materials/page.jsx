@@ -44,7 +44,7 @@ function MaterialsList() {
             // Open PDF in new tab
             window.open(res.data.downloadUrl, "_blank");
         } catch (err) {
-            alert("Download failed");
+            setDownloadError("Download failed. Please try again.");
         } finally {
             setDownloading(null);
         }

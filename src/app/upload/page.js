@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-
-
+import { useAuth } from "../context/AuthContext";
+import ProtectedRoute from "../components/ProtectedRoute";
 const SUBJECTS = ["Anatomy", "Herbology", "Pharmacology", "Clinical", "Research", "Other"];
 
-export default function UploadPage() {
+function UploadForm() {
   const [file, setFile] = useState(null);
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
@@ -13,6 +13,7 @@ export default function UploadPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  const { authAxios } = useAuth();
   const inputStyle = {
     width: "100%",
     padding: "12px 16px",
@@ -37,12 +38,8 @@ export default function UploadPage() {
     formData.append("file", file);
 
     try {
-      const res = await fetch("http://localhost:5000/api/materials/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      console.log(data);
+      const res = await authAxios.post("/materials/upload", formData);
+      console.log(res.data);
       setSuccess(true);
       setTitle(""); setSubject(""); setDescription(""); setFile(null);
     } catch (err) {
@@ -244,4 +241,7 @@ export default function UploadPage() {
       </div>
     </div>
   );
+}
+export default function UploadPage() {
+  return <ProtectedRoute><UploadForm /></ProtectedRoute>;
 }
