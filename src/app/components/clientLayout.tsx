@@ -43,37 +43,58 @@ export default function ClientLayout({
                     />
 
                     <main className="layout-main">
-                        <Navbar />
+                        <Navbar onMenuClick={() => setMobileOpen(true)} />
                         <div className="content-wrapper">{children}</div>
                     </main>
 
                     <style jsx>{`
-            .layout-shell {
-              display: flex;
-              min-height: 100vh;
-              width: 100%;
-              background: #fff;
-            }
+                        .layout-shell {
+                            display: flex;
+                            min-height: 100vh;
+                            width: 100%;
+                            background: #fff;
+                        }
 
-            .layout-main {
-              flex: 1;
-              min-width: 0;
-              background: #fff;
-            }
+                        .layout-main {
+                            flex: 1;
+                            min-width: 0;
+                            background: #fff;
+                        }
 
-            .content-wrapper {
-              width: 100%;
-            }
+                        .content-wrapper {
+                            width: 100%;
+                        }
 
-            @media (max-width: 767px) {
-              .layout-shell {
-                display: block;
-              }
-            }
-          `}</style>
+                        @media (max-width: 767px) {
+                            .layout-shell {
+                                display: block;
+                            }
+                        }
+                    `}</style>
                 </div>
             ) : (
-                <main>{children}</main>
+                <>
+                    <div className="mobile-drawer-only">
+                        <Sidebar
+                            collapsed={collapsed}
+                            setCollapsed={setCollapsed}
+                            mobileOpen={mobileOpen}
+                            setMobileOpen={setMobileOpen}
+                        />
+                    </div>
+                    <Navbar onMenuClick={() => setMobileOpen(true)} />
+                    <main>{children}</main>
+                    <style jsx>{`
+                        .mobile-drawer-only {
+                            display: none;
+                        }
+                        @media (max-width: 767px) {
+                            .mobile-drawer-only {
+                                display: block;
+                            }
+                        }
+                    `}</style>
+                </>
             )}
         </AuthProvider>
     );

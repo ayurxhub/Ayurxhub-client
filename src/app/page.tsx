@@ -95,7 +95,8 @@ const COMMUNITY_CARDS = [
 export default function LandingPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
-
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const firstName = (user as any)?.name?.split(" ")[0] || "there";
   const hour = new Date().getHours();
   const greeting =

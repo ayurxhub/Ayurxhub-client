@@ -5,13 +5,13 @@ import Link from "next/link";
 import Image from "next/image";
 import UserMenu from "./UserMenu";
 
-export default function Navbar() {
+export default function Navbar({ onMenuClick }) {
   const { user } = useAuth();
 
   return (
     <header className="rx-navbar">
       <div className="nav-left">
-        <button className="hamburger-btn mobile-only" type="button" aria-label="Open menu">
+        <button className="hamburger-btn mobile-only" type="button" aria-label="Open menu" onClick={onMenuClick}>
           <span className="material-symbols-outlined">menu</span>
         </button>
       </div>
