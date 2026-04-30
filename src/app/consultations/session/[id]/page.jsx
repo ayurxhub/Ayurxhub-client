@@ -10,10 +10,10 @@ export default function SessionPage() {
     return <ProtectedRoute><SessionRoom /></ProtectedRoute>;
 }
 
-const SOCKET_URL = "http://localhost:5000";
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL;
 
 function SessionRoom() {
-    const { authAxios, user } = useAuth();
+    const { authAxios, user, accessTokenRef } = useAuth();
     const { id: bookingId } = useParams();
     const router = useRouter();
 
@@ -29,7 +29,7 @@ function SessionRoom() {
     const [savingRx, setSavingRx] = useState(false);
     const [rxSaved, setRxSaved] = useState(false);
     const [jitsiReady, setJitsiReady] = useState(false);
-
+    const [rxError, setRxError] = useState("");
     const socketRef = useRef(null);
     const chatEndRef = useRef(null);
     const jitsiApiRef = useRef(null);
@@ -60,10 +60,13 @@ function SessionRoom() {
 
         import("socket.io-client").then(({ io }) => {
             const socket = io(SOCKET_URL, {
-                auth: { bookingId, userId: user._id },
+                auth: {
+                    bookingId,
+                    userId: user._id,
+                    token: accessTokenRef.current,
+                },
                 transports: ["websocket"],
             });
-
             socket.on("connect", () => {
                 setSocketReady(true);
                 socket.emit("join_room", { bookingId });
@@ -272,7 +275,7 @@ function SessionRoom() {
             setRxSaved(true);
             setTimeout(() => setRxSaved(false), 2500);
         } catch {
-            alert("Failed to save prescription");
+            setRxError("Failed to save prescription");
         } finally {
             setSavingRx(false);
         }
@@ -556,6 +559,9 @@ function SessionRoom() {
                                 </span>
                                 {rxSaved ? "Saved!" : savingRx ? "Saving..." : "Save Prescription"}
                             </button>
+                            {rxError && (
+                                <p style={{ fontSize: 12, color: "#fca5a5", marginTop: 6 }}>{rxError}</p>
+                            )}
                         </div>
                     )}
 

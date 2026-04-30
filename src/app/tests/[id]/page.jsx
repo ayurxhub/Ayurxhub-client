@@ -79,7 +79,7 @@ function TestAttempt() {
     const streamRef = useRef(null);
     const canvasRef = useRef(null);
     const faceTimerRef = useRef(null);
-
+    const [testError, setTestError] = useState("");
     const timerRef = useRef(null);
     const MAX_VIOLATIONS = 3;
     const isPaid = testMeta?.type === "paid";
@@ -317,15 +317,21 @@ function TestAttempt() {
             const res = await authAxios.post(`/tests/${id}/start`);
             const { attempt, questions: qs, timeRemaining } = res.data;
 
+            // ── SECURITY: Strip answer data from question objects ────────────
+            // correctIndex and explanation must never be stored in client state
+            // during an active test — they are only returned by /submit.
+            // Even if the backend accidentally includes them, we drop them here.
+            const safeQs = qs.map(({ correctIndex: _ci, explanation: _ex, ...q }) => q);
+
             // ── ANTI-CHEAT #4: Randomize option display order ────────────────
             // Each question's options are shown in a shuffled order unique to
             // this (question, attempt) pair. We store the real correctIndex in
             // `answers`, never the display index.
             const orders = {};
-            qs.forEach(q => { orders[q._id] = getOptionOrder(q._id, attempt._id); });
+            safeQs.forEach(q => { orders[q._id] = getOptionOrder(q._id, attempt._id); });
             setOptOrders(orders);
 
-            setQuestions(qs);
+            setQuestions(safeQs);
             setAttemptId(attempt._id);
             setTimeLeft(timeRemaining);
             setAnswers({});
@@ -338,7 +344,7 @@ function TestAttempt() {
 
             setPhase("taking");
         } catch (e) {
-            alert(e.response?.data?.message || "Failed to start test");
+            setTestError(e.response?.data?.message || "Failed to start test");
             setPhase("intro");
         }
     };
@@ -384,7 +390,7 @@ function TestAttempt() {
             setReview(res.data.review);
             setPhase("result");
         } catch (e) {
-            alert(e.response?.data?.message || "Submission failed");
+            setTestError(e.response?.data?.message || "Submission failed");
         } finally {
             setSubmitting(false);
         }
@@ -460,6 +466,11 @@ function TestAttempt() {
                     </p>
                 </div>
 
+                {testError && (
+                    <div style={{ padding: "10px 14px", borderRadius: 8, background: "#fee2e2", color: "#991b1b", fontSize: 13, marginBottom: 12 }}>
+                        {testError}
+                    </div>
+                )}
                 <div style={{ display: "flex", gap: 10 }}>
                     <button onClick={() => router.push("/tests")} style={{ flex: 1, padding: "12px", borderRadius: 10, border: "1px solid #e5e7eb", background: "transparent", color: "#374151", fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
                         ← Back
@@ -623,6 +634,9 @@ function TestAttempt() {
                                 </button>
                             )}
                         </div>
+                        {testError && (
+                            <p style={{ fontSize: 12, color: "#dc2626", marginTop: 8, textAlign: "center" }}>{testError}</p>
+                        )}
                     </div>
 
                     {/* Sidebar */}

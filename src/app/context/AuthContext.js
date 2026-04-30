@@ -3,25 +3,34 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback } f
 import axios from "axios";
 
 const AuthContext = createContext(null);
-const API = "http://localhost:5000/api";
+const API = process.env.NEXT_PUBLIC_API_URL;
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
-    const accessTokenRef = useRef(null); // In-memory only — not localStorage
+    const accessTokenRef = useRef(null);
+    const intervalRef = useRef(null);
+    const authAxiosRef = useRef(axios.create({ baseURL: API, withCredentials: true }));
 
     const setSession = (token, userData) => {
         accessTokenRef.current = token;
         setUser(userData);
     };
 
-    // Silent refresh on app load (uses HttpOnly cookie automatically)
+    const logout = useCallback(async () => {
+        try {
+            await authAxiosRef.current.post("/auth/logout");
+        } catch { }
+        accessTokenRef.current = null;
+        setUser(null);
+    }, []);
+
+    // Silent refresh on app load
     useEffect(() => {
         const initAuth = async () => {
             try {
                 const res = await axios.post(`${API}/auth/refresh`, {}, { withCredentials: true });
                 setSession(res.data.accessToken, res.data.user ?? null);
-                // Fetch user if not returned
                 if (!res.data.user) {
                     const me = await axios.get(`${API}/auth/me`, {
                         headers: { Authorization: `Bearer ${res.data.accessToken}` },
@@ -39,17 +48,56 @@ export function AuthProvider({ children }) {
 
     // Auto-refresh access token every 14 minutes
     useEffect(() => {
-        if (!user) return;
-        const interval = setInterval(async () => {
+        if (!user) {
+            clearInterval(intervalRef.current);
+            return;
+        }
+        intervalRef.current = setInterval(async () => {
             try {
                 const res = await axios.post(`${API}/auth/refresh`, {}, { withCredentials: true });
                 accessTokenRef.current = res.data.accessToken;
             } catch {
-                logout(); // Refresh failed — force logout
+                logout();
             }
         }, 14 * 60 * 1000);
-        return () => clearInterval(interval);
-    }, [user]);
+        return () => clearInterval(intervalRef.current);
+    }, [user, logout]);
+
+    // Axios interceptors — attached once
+    useEffect(() => {
+        const instance = authAxiosRef.current;
+
+        const reqInterceptor = instance.interceptors.request.use((config) => {
+            if (accessTokenRef.current) {
+                config.headers.Authorization = `Bearer ${accessTokenRef.current}`;
+            }
+            return config;
+        });
+
+        const resInterceptor = instance.interceptors.response.use(
+            (res) => res,
+            async (error) => {
+                const original = error.config;
+                if (error.response?.status === 401 && !original._retry) {
+                    original._retry = true;
+                    try {
+                        const res = await axios.post(`${API}/auth/refresh`, {}, { withCredentials: true });
+                        accessTokenRef.current = res.data.accessToken;
+                        original.headers.Authorization = `Bearer ${res.data.accessToken}`;
+                        return instance(original);
+                    } catch {
+                        logout();
+                    }
+                }
+                return Promise.reject(error);
+            }
+        );
+
+        return () => {
+            instance.interceptors.request.eject(reqInterceptor);
+            instance.interceptors.response.eject(resInterceptor);
+        };
+    }, [logout]);
 
     const register = async (name, email, password, role = "student") => {
         const res = await axios.post(`${API}/auth/register`, { name, email, password, role }, { withCredentials: true });
@@ -63,7 +111,6 @@ export function AuthProvider({ children }) {
         return res.data.user;
     };
 
-    // Google OAuth login — idToken from Firebase, role only needed for new users
     const loginWithGoogle = async (idToken, role = null) => {
         const payload = { idToken };
         if (role) payload.role = role;
@@ -72,46 +119,10 @@ export function AuthProvider({ children }) {
         return res.data.user;
     };
 
-    const logout = useCallback(async () => {
-        try {
-            await authAxios.post("/auth/logout");
-        } catch { } // Still clear client state even if request fails
-        accessTokenRef.current = null;
-        setUser(null);
-    }, []);
-
-    // Axios instance with auto-token injection
-    const authAxios = axios.create({ baseURL: API, withCredentials: true });
-    authAxios.interceptors.request.use((config) => {
-        if (accessTokenRef.current) {
-            config.headers.Authorization = `Bearer ${accessTokenRef.current}`;
-        }
-        return config;
-    });
-
-    // Auto-retry on 401 with token refresh
-    authAxios.interceptors.response.use(
-        (res) => res,
-        async (error) => {
-            const original = error.config;
-            if (error.response?.status === 401 && !original._retry) {
-                original._retry = true;
-                try {
-                    const res = await axios.post(`${API}/auth/refresh`, {}, { withCredentials: true });
-                    accessTokenRef.current = res.data.accessToken;
-                    original.headers.Authorization = `Bearer ${res.data.accessToken}`;
-                    return authAxios(original);
-                } catch {
-                    logout();
-                }
-            }
-            return Promise.reject(error);
-        }
-    );
+    const authAxios = authAxiosRef.current;
 
     return (
-
-        <AuthContext.Provider value={{ user, setUser, loading, register, login, loginWithGoogle, logout, authAxios }}>
+        <AuthContext.Provider value={{ user, setUser, loading, register, login, loginWithGoogle, logout, authAxios, accessTokenRef }}>
             {children}
         </AuthContext.Provider>
     );

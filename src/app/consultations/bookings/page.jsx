@@ -104,7 +104,9 @@ function BookingsList() {
     const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
     const [submittingReview, setSubmittingReview] = useState(false);
     const [successBanner, setSuccessBanner] = useState(searchParams.get("success") === "1");
-
+    const [actionError, setActionError] = useState("");
+    const [cancelPrompt, setCancelPrompt] = useState(null); // holds booking id
+    const [cancelReason, setCancelReason] = useState("");
     const isExpert = user?.role === "expert";
     const TABS = isExpert
         ? ["pending", "confirmed", "completed", "all"]
@@ -137,23 +139,32 @@ function BookingsList() {
 
     const handleConfirm = async (id) => {
         try { await authAxios.put(`/bookings/${id}/confirm`); fetchBookings(); }
-        catch (e) { alert(e.response?.data?.message || "Failed to confirm"); }
+        catch (e) { setActionError(e.response?.data?.message || "Failed to confirm"); }
     };
 
     const handleComplete = async (id) => {
         try { await authAxios.put(`/bookings/${id}/complete`); fetchBookings(); }
-        catch (e) { alert(e.response?.data?.message || "Failed to complete"); }
+        catch (e) { setActionError(e.response?.data?.message || "Failed to complete"); }
     };
 
+    // CHANGE entire handleCancel to
     const handleCancel = async (id) => {
-        const reason = window.prompt("Reason for cancellation (optional):");
-        if (reason === null) return;
-        setCancelling(id);
-        try { await authAxios.put(`/bookings/${id}/cancel`, { reason }); fetchBookings(); }
-        catch (e) { alert(e.response?.data?.message || "Cancellation failed"); }
-        finally { setCancelling(null); }
+        setCancelPrompt(id);
     };
 
+    const confirmCancel = async () => {
+        setCancelling(cancelPrompt);
+        try {
+            await authAxios.put(`/bookings/${cancelPrompt}/cancel`, { reason: cancelReason });
+            fetchBookings();
+        } catch (e) {
+            setActionError(e.response?.data?.message || "Cancellation failed");
+        } finally {
+            setCancelling(null);
+            setCancelPrompt(null);
+            setCancelReason("");
+        }
+    };
     const handleReviewSubmit = async () => {
         setSubmittingReview(true);
         try {
@@ -161,7 +172,7 @@ function BookingsList() {
             setReviewModal(null);
             setReviewForm({ rating: 5, comment: "" });
             fetchBookings();
-        } catch (e) { alert(e.response?.data?.message || "Review failed"); }
+        } catch (e) { setActionError(e.response?.data?.message || "Review failed"); }
         finally { setSubmittingReview(false); }
     };
 
@@ -525,6 +536,37 @@ function BookingCard({ booking, isExpert, otherPerson, initials, onConfirm, onCo
                     )}
                 </div>
             </div>
+            {actionError && (
+                <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9999, background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: 12, padding: "12px 18px", fontSize: 14, fontWeight: 500 }}>
+                    {actionError}
+                    <button onClick={() => setActionError("")} style={{ marginLeft: 12, background: "none", border: "none", cursor: "pointer", color: "#991b1b", fontSize: 16 }}>×</button>
+                </div>
+            )}
+
+            {cancelPrompt && (
+                <div style={{ position: "fixed", inset: 0, zIndex: 99998, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ background: "#fff", borderRadius: 16, padding: 28, maxWidth: 400, width: "90%" }}>
+                        <p style={{ fontSize: 15, fontWeight: 500, color: "#111827", marginBottom: 12 }}>Cancel booking</p>
+                        <textarea
+                            placeholder="Reason for cancellation (optional)"
+                            rows={3}
+                            value={cancelReason}
+                            onChange={(e) => setCancelReason(e.target.value)}
+                            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 13, resize: "vertical", marginBottom: 16 }}
+                        />
+                        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                            <button onClick={() => { setCancelPrompt(null); setCancelReason(""); }}
+                                style={{ padding: "9px 20px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#fff", color: "#374151", fontSize: 14, cursor: "pointer" }}>
+                                Back
+                            </button>
+                            <button onClick={confirmCancel}
+                                style={{ padding: "9px 20px", borderRadius: 8, border: "none", background: "#dc2626", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                                Cancel booking
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

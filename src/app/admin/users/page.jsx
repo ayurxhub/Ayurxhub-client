@@ -3,10 +3,15 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useRouter } from "next/navigation";
-
+import { useToast } from "@/app/components/Toast";
+import { useConfirm } from "@/app/components/ConfirmModal";
 export default function AdminUsers() {
     const { authAxios } = useAuth();
     const router = useRouter();
+    const { showToast, ToastElement } = useToast();
+    const { confirm, ConfirmElement } = useConfirm();
+
+
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -39,7 +44,7 @@ export default function AdminUsers() {
             await authAxios.put(`/admin/users/${userId}/toggle`);
             fetchUsers();
         } catch (err) {
-            alert(err.response?.data?.message || "Failed");
+            showToast(err.response?.data?.message || "Failed", "error");
         }
     };
 
@@ -48,17 +53,18 @@ export default function AdminUsers() {
             await authAxios.put(`/admin/users/${userId}/verify`);
             fetchUsers();
         } catch (err) {
-            alert(err.response?.data?.message || "Failed");
+            showToast(err.response?.data?.message || "Failed", "error");
         }
     };
 
     const handleDelete = async (userId) => {
-        if (!confirm("Are you sure you want to delete this user?")) return;
+        const ok = await confirm("Are you sure you want to delete this user?");
+        if (!ok) return;
         try {
             await authAxios.delete(`/admin/users/${userId}`);
             fetchUsers();
         } catch (err) {
-            alert(err.response?.data?.message || "Failed");
+            showToast(err.response?.data?.message || "Failed");
         }
     };
 
@@ -150,6 +156,8 @@ export default function AdminUsers() {
                     <button onClick={() => setPage((p) => p + 1)} disabled={users.length < 20} style={actionBtn}>Next</button>
                 </div>
             </div>
+            {ToastElement}
+            {ConfirmElement}
         </div>
     );
 }

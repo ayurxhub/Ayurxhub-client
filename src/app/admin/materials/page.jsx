@@ -69,20 +69,19 @@ export default function AdminMaterials() {
             await authAxios.put(`/materials/${id}/publish`);
             fetchMaterials();
         } catch (err) {
-            alert(err.response?.data?.message || "Failed");
+            setMsg({ text: err.response?.data?.message || "Failed", type: "error" });
         }
     };
 
     const handleDelete = async (id) => {
-        if (!confirm("Delete this material?")) return;
+        if (!window.confirm("Delete this material?")) return;
         try {
             await authAxios.delete(`/materials/${id}`);
             fetchMaterials();
         } catch (err) {
-            alert(err.response?.data?.message || "Failed");
+            setMsg({ text: err.response?.data?.message || "Failed", type: "error" });
         }
     };
-
     const formatSize = (bytes) => {
         if (bytes > 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
         return `${(bytes / 1024).toFixed(0)} KB`;

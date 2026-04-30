@@ -22,7 +22,7 @@ export default function AdminExperts() {
     const [showRejectInput, setShowRejectInput] = useState(false);
     const [notes, setNotes] = useState("");
     const [notesSaved, setNotesSaved] = useState(false);
-
+    const [actionError, setActionError] = useState("");
     useEffect(() => { fetchExperts(); }, [filter]);
     useEffect(() => {
         if (selected) {
@@ -52,7 +52,7 @@ export default function AdminExperts() {
             setRejectReason("");
             fetchExperts();
         } catch (err) {
-            alert(err.response?.data?.message || "Failed");
+            setActionError(err.response?.data?.message || "Failed");
         }
     };
 
@@ -62,7 +62,7 @@ export default function AdminExperts() {
             setNotesSaved(true);
             setTimeout(() => setNotesSaved(false), 2000);
         } catch (err) {
-            alert("Failed to save notes");
+            setActionError("Failed to save notes");
         }
     };
 
@@ -75,7 +75,16 @@ export default function AdminExperts() {
             : url;
 
     return (
+
+
         <div style={{ display: "grid", gridTemplateColumns: selected ? "340px 1fr" : "1fr", gap: 16, alignItems: "start" }}>
+
+
+            {actionError && (
+                <div style={{ padding: "10px 14px", borderRadius: 8, marginBottom: 16, background: "rgba(226,75,74,0.15)", color: "#E24B4A", fontSize: 13 }}>
+                    {actionError}
+                </div>
+            )}
 
             {/* ── Left: expert list ── */}
             <div>

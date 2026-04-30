@@ -270,7 +270,7 @@ export default function ReferencesPage() {
     useEffect(() => {
         const fetchReferences = async () => {
             try {
-                const res = await fetch("http://localhost:5000/api/references");
+                const res = await authAxios.get("/references");
                 const data = await res.json();
                 setInstitutions(data.institutions || []);
                 setEbooks(data.ebooks || []);

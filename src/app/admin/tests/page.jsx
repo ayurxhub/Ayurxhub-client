@@ -98,7 +98,7 @@ export default function AdminTestsPage() {
     };
 
     const deleteTest = async (id) => {
-        if (!confirm("Delete this test?")) return;
+        if (!window.confirm("Delete this test?")) return;
         await authAxios.delete(`/tests/${id}`);
         loadAll();
     };
@@ -109,7 +109,7 @@ export default function AdminTestsPage() {
     };
 
     const deleteQ = async (id) => {
-        if (!confirm("Delete this question?")) return;
+        if (!window.confirm("Delete this question?")) return;
         await authAxios.delete(`/tests/questions/${id}`);
         loadAll();
     };
@@ -460,10 +460,10 @@ function SubjectFormModal({ authAxios, onClose, onSaved }) {
     const [termsText, setTermsText] = useState("Term 1, Term 2");
     const [chaptersText, setChaptersText] = useState("");
     const [saving, setSaving] = useState(false);
-
+    const [error, setError] = useState("");
     const handleSave = async () => {
         if (!name.trim()) {
-            alert("Subject name is required");
+            setError("Subject name is required");
             return;
         }
 
@@ -496,7 +496,7 @@ function SubjectFormModal({ authAxios, onClose, onSaved }) {
 
             onSaved();
         } catch (e) {
-            alert(e.response?.data?.message || "Failed to create subject");
+            setError(e.response?.data?.message || "Failed to create subject");
         } finally {
             setSaving(false);
         }
@@ -542,6 +542,8 @@ Term 2 | Chapter 3 - Samprapti`}
                 </Field>
             </div>
 
+            {error && <p style={{ fontSize: 13, color: "#E24B4A", marginBottom: 8 }}>{error}</p>}
+
             <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
                 <button onClick={onClose} style={cancelBtn}>
                     Cancel
@@ -566,7 +568,8 @@ function BulkUploadModal({ authAxios, onClose, onSaved }) {
 
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(false);
-
+    const [error, setError] = useState("");
+    const [successMsg, setSuccessMsg] = useState("");
     useEffect(() => {
         const loadSubjects = async () => {
             try {
@@ -600,12 +603,12 @@ function BulkUploadModal({ authAxios, onClose, onSaved }) {
 
     const previewUpload = async () => {
         if (!file) {
-            alert("Select a DOCX file first");
+            setError("Select a DOCX file first");
             return;
         }
 
         if (!meta.subject || !meta.chapter) {
-            alert("Select subject and chapter first");
+            setError("Select subject and chapter first");
             return;
         }
 
@@ -632,7 +635,7 @@ function BulkUploadModal({ authAxios, onClose, onSaved }) {
 
             setQuestions(res.data.questions || []);
         } catch (e) {
-            alert(e.response?.data?.message || "Preview failed");
+            setError(e.response?.data?.message || "Preview failed");
         } finally {
             setLoading(false);
         }
@@ -640,7 +643,7 @@ function BulkUploadModal({ authAxios, onClose, onSaved }) {
 
     const saveQuestions = async () => {
         if (questions.length === 0) {
-            alert("No questions to save");
+            setError("No questions to save");
             return;
         }
 
@@ -650,7 +653,7 @@ function BulkUploadModal({ authAxios, onClose, onSaved }) {
             onSaved();
             onClose();
         } catch (e) {
-            alert(e.response?.data?.message || "Save failed");
+            setError(e.response?.data?.message || "Save failed");
         } finally {
             setLoading(false);
         }
@@ -847,6 +850,8 @@ function BulkUploadModal({ authAxios, onClose, onSaved }) {
                 </>
             )}
 
+            {error && <p style={{ fontSize: 13, color: "#E24B4A", marginBottom: 8 }}>{error}</p>}
+
             <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
                 <button onClick={onClose} style={cancelBtn}>
                     Cancel
@@ -877,7 +882,7 @@ function TestFormModal({ authAxios, editing, onClose, onSaved }) {
         passingScore: editing?.passingScore || 60,
         shuffleQuestions: editing?.shuffleQuestions || false,
     });
-
+    const [error, setError] = useState("");
     const [saving, setSaving] = useState(false);
     const [subjects, setSubjects] = useState([]);
     const [questionSource, setQuestionSource] = useState("bank"); // bank | upload
@@ -925,8 +930,8 @@ function TestFormModal({ authAxios, editing, onClose, onSaved }) {
 
 
     const previewDocx = async () => {
-        if (!file) return alert("Upload DOCX first");
-        if (!form.subject || !form.chapter) return alert("Select subject and chapter first");
+        if (!file) return setError("Upload DOCX first");
+        if (!form.subject || !form.chapter) return setError("Select subject and chapter first");
 
         setPreviewLoading(true);
 
@@ -943,16 +948,16 @@ function TestFormModal({ authAxios, editing, onClose, onSaved }) {
 
             setPreviewQuestions(res.data.questions || []);
         } catch (e) {
-            alert(e.response?.data?.message || "Preview failed");
+            setError(e.response?.data?.message || "Preview failed");
         } finally {
             setPreviewLoading(false);
         }
     };
 
     const handleSave = async () => {
-        if (!form.title.trim()) return alert("Title is required");
-        if (!form.subject) return alert("Subject is required");
-        if (!form.chapter) return alert("Chapter is required");
+        if (!form.title.trim()) return setError("Title is required");
+        if (!form.subject) return setError("Subject is required");
+        if (!form.chapter) return setError("Chapter is required");
 
 
         setSaving(true);
@@ -960,7 +965,7 @@ function TestFormModal({ authAxios, editing, onClose, onSaved }) {
         try {
             if (questionSource === "upload" && !editing) {
                 if (previewQuestions.length === 0) {
-                    return alert("Preview questions before creating test");
+                    return setError("Preview questions before creating test");
                 }
 
                 const fd = new FormData();
@@ -997,7 +1002,7 @@ function TestFormModal({ authAxios, editing, onClose, onSaved }) {
             onSaved();
             onClose();
         } catch (e) {
-            alert(e.response?.data?.message || "Save failed");
+            setError(e.response?.data?.message || "Save failed");
         } finally {
             setSaving(false);
         }
@@ -1273,6 +1278,8 @@ function TestFormModal({ authAxios, editing, onClose, onSaved }) {
                 </label>
             </div>
 
+            {error && <p style={{ fontSize: 13, color: "#E24B4A", marginBottom: 8 }}>{error}</p>}
+
             <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
                 <button onClick={onClose} style={cancelBtn}>
                     Cancel
@@ -1298,12 +1305,12 @@ function QuestionFormModal({ authAxios, editing, onClose, onSaved }) {
         difficulty: editing?.difficulty || "medium",
         tags: editing?.tags?.join(", ") || "",
     });
-
+    const [error, setError] = useState("");
     const [saving, setSaving] = useState(false);
 
     const handleSave = async (addNext = false) => {
         if (!form.text || form.options.some(o => !o.trim())) {
-            alert("Fill question and all 4 options");
+            setError("Fill question and all 4 options");
             return;
         }
 
@@ -1335,7 +1342,7 @@ function QuestionFormModal({ authAxios, editing, onClose, onSaved }) {
                 onClose();
             }
         } catch (e) {
-            alert(e.response?.data?.message || "Save failed");
+            setError(e.response?.data?.message || "Save failed");
         } finally {
             setSaving(false);
         }
@@ -1434,6 +1441,8 @@ function QuestionFormModal({ authAxios, editing, onClose, onSaved }) {
                     />
                 </Field>
             </div>
+
+            {error && <p style={{ fontSize: 13, color: "#E24B4A", marginBottom: 8 }}>{error}</p>}
 
             <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
                 <button onClick={onClose} style={cancelBtn}>Cancel</button>
