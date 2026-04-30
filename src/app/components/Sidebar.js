@@ -14,7 +14,6 @@ const commonLinks = [
   { href: "/references", icon: "library_books", label: "References" },
   { href: "/tests", icon: "quiz", label: "Test Series" },
   { href: "/marketplace", icon: "storefront", label: "Marketplace" },
-  { href: "/settings", icon: "settings", label: "Settings" },
   { href: "/about", icon: "info", label: "About Us" },
 ];
 
@@ -26,7 +25,6 @@ const expertLinks = [
   { href: "/materials", icon: "auto_stories", label: "Curriculum" },
   { href: "/references", icon: "library_books", label: "References" },
   { href: "/marketplace", icon: "storefront", label: "Marketplace" },
-  { href: "/settings", icon: "settings", label: "Settings" },
   { href: "/about", icon: "info", label: "About Us" },
 ];
 
