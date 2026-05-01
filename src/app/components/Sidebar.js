@@ -19,7 +19,7 @@ const commonLinks = [
 ];
 
 const expertLinks = [
-  { href: "/", icon: "dashboard", label: "Dashboard" },
+  { href: "/", icon: "dashboard", label: "Dashboasrd" },
   { href: "/consultations", icon: "medical_services", label: "Consultations" },
   { href: "/consultations/bookings", icon: "calendar_month", label: "My Bookings" },
   { href: "/availability", icon: "event_available", label: "My Availability" },

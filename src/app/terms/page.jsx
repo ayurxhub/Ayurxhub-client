@@ -373,12 +373,14 @@ export default function TermsPage() {
     const [activeRole, setActiveRole] = useState("user");
     const [activeSection, setActiveSection] = useState(null);
     const [scrolled, setScrolled] = useState(false);
-    const contentRef = useRef(null);
+    const [showTOC, setShowTOC] = useState(false);
 
-    const sections = activeRole === "user" ? USER_SECTIONS : CONSULTANT_SECTIONS;
+    const contentRef = useRef(null);
+    const sections =
+        activeRole === "user" ? USER_SECTIONS : CONSULTANT_SECTIONS;
 
     useEffect(() => {
-        const onScroll = () => setScrolled(window.scrollY > 60);
+        const onScroll = () => setScrolled(window.scrollY > 40);
         window.addEventListener("scroll", onScroll);
         return () => window.removeEventListener("scroll", onScroll);
     }, []);
@@ -389,205 +391,244 @@ export default function TermsPage() {
 
     const scrollTo = (id) => {
         const el = document.getElementById(id);
-        if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); setActiveSection(id); }
+        if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+            setActiveSection(id);
+            setShowTOC(false);
+        }
     };
 
     return (
-        <div style={{ minHeight: "100vh", background: "#0c0f16", fontFamily: "'Georgia', serif", color: "#e2e8f0" }}>
-
-            {/* ── Sticky Header ── */}
-            <header style={{
-                position: "sticky", top: 0, zIndex: 50,
-                background: scrolled ? "rgba(12,15,22,0.97)" : "transparent",
-                borderBottom: scrolled ? "1px solid rgba(255,255,255,0.06)" : "none",
-                backdropFilter: scrolled ? "blur(16px)" : "none",
-                padding: "16px 48px",
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                transition: "all 0.3s ease",
-            }}>
+        <div
+            style={{
+                minHeight: "100vh",
+                background: "#0c0f16",
+                fontFamily: "'Georgia', serif",
+                color: "#e2e8f0",
+            }}
+        >
+            {/* HEADER */}
+            <header
+                style={{
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 50,
+                    background: scrolled ? "rgba(12,15,22,0.97)" : "transparent",
+                    borderBottom: scrolled
+                        ? "1px solid rgba(255,255,255,0.06)"
+                        : "none",
+                    backdropFilter: scrolled ? "blur(10px)" : "none",
+                    padding: "12px 16px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                }}
+            >
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 8, background: "linear-gradient(135deg, #1D9E75, #00256e)", display: "grid", placeItems: "center", fontSize: 12, fontWeight: 800, color: "#fff", fontFamily: "sans-serif" }}>A</div>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: "#fff", fontFamily: "sans-serif", letterSpacing: "-0.02em" }}>AyurXHub</span>
+                    <img
+                        src="/Ayurxhub logo.png"
+                        alt="logo"
+                        style={{ width: 28, height: 28, borderRadius: 6 }}
+                    />
+                    <span
+                        style={{
+                            fontSize: 14,
+                            fontWeight: 600,
+                            color: "#fff",
+                            fontFamily: "sans-serif",
+                        }}
+                    >
+                        AyurXHub
+                    </span>
                 </div>
-                <span style={{ fontSize: 11, color: "#4a5568", fontFamily: "sans-serif", letterSpacing: "0.1em", textTransform: "uppercase" }}>Legal Documents</span>
+
+                <span
+                    style={{
+                        fontSize: 10,
+                        color: "#64748b",
+                        fontFamily: "sans-serif",
+                    }}
+                >
+                    LEGAL
+                </span>
             </header>
 
-            {/* ── Hero ── */}
-            <div style={{ padding: "80px 48px 60px", borderBottom: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden" }}>
-                {/* Background pattern */}
-                <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle at 20% 50%, rgba(29,158,117,0.08) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(0,37,110,0.12) 0%, transparent 50%)", pointerEvents: "none" }} />
-
-                <div style={{ maxWidth: 860, margin: "0 auto", position: "relative" }}>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 14px", borderRadius: 20, background: "rgba(29,158,117,0.1)", border: "1px solid rgba(29,158,117,0.3)", marginBottom: 24 }}>
-                        <span style={{ fontSize: 10, color: "#1D9E75", fontFamily: "sans-serif", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Last Updated: {LAST_UPDATED}</span>
+            {/* HERO */}
+            <div
+                style={{
+                    padding: "40px 16px",
+                    borderBottom: "1px solid rgba(255,255,255,0.06)",
+                }}
+            >
+                <div style={{ maxWidth: 700, margin: "0 auto" }}>
+                    <div
+                        style={{
+                            fontSize: 11,
+                            color: "#1D9E75",
+                            marginBottom: 10,
+                            fontFamily: "sans-serif",
+                        }}
+                    >
+                        LAST UPDATED: {LAST_UPDATED}
                     </div>
-                    <h1 style={{ fontSize: "clamp(36px, 5vw, 58px)", fontWeight: 400, color: "#f8fafc", lineHeight: 1.15, margin: "0 0 20px", letterSpacing: "-0.02em" }}>
+
+                    <h1 style={{ fontSize: 34, marginBottom: 12 }}>
                         Terms &{" "}
-                        <span style={{ fontStyle: "italic", color: "#1D9E75" }}>Conditions</span>
+                        <span style={{ color: "#1D9E75", fontStyle: "italic" }}>
+                            Conditions
+                        </span>
                     </h1>
-                    <p style={{ fontSize: 16, color: "#64748b", lineHeight: 1.8, maxWidth: 600, margin: 0, fontFamily: "sans-serif" }}>
-                        Please read these terms carefully. They govern your use of the AyurXHub platform and define the rights and responsibilities of all parties.
+
+                    <p
+                        style={{
+                            fontSize: 14,
+                            color: "#64748b",
+                            lineHeight: 1.7,
+                            fontFamily: "sans-serif",
+                        }}
+                    >
+                        Please read these terms carefully. They govern your use of the
+                        AyurXHub platform.
                     </p>
 
-                    {/* Role switcher */}
-                    <div style={{ display: "inline-flex", marginTop: 36, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 4, gap: 4 }}>
-                        {[
-                            { key: "user", label: "Patient / Student", icon: "🎓" },
-                            { key: "consultant", label: "Practitioner / Expert", icon: "🩺" },
-                        ].map(({ key, label, icon }) => (
+                    {/* ROLE SWITCH */}
+                    <div
+                        style={{
+                            display: "flex",
+                            marginTop: 20,
+                            borderRadius: 10,
+                            overflow: "hidden",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                        }}
+                    >
+                        {["user", "consultant"].map((role) => (
                             <button
-                                key={key}
-                                onClick={() => { setActiveRole(key); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                                key={role}
+                                onClick={() => {
+                                    setActiveRole(role);
+                                    window.scrollTo({ top: 0 });
+                                }}
                                 style={{
-                                    display: "flex", alignItems: "center", gap: 8,
-                                    padding: "10px 22px", borderRadius: 11, border: "none", cursor: "pointer",
-                                    fontFamily: "sans-serif", fontSize: 13, fontWeight: 500, transition: "all 0.2s",
-                                    background: activeRole === key
-                                        ? (key === "user" ? "linear-gradient(135deg, #00256e, #1f3c88)" : "linear-gradient(135deg, #0e4f3b, #1D9E75)")
-                                        : "transparent",
-                                    color: activeRole === key ? "#fff" : "#64748b",
-                                    boxShadow: activeRole === key ? "0 4px 16px rgba(0,0,0,0.3)" : "none",
+                                    flex: 1,
+                                    padding: "10px",
+                                    fontSize: 12,
+                                    background:
+                                        activeRole === role ? "#1D9E75" : "transparent",
+                                    color: activeRole === role ? "#fff" : "#64748b",
+                                    border: "none",
                                 }}
                             >
-                                <span>{icon}</span>
-                                {label}
+                                {role === "user"
+                                    ? "Patient / Student"
+                                    : "Practitioner"}
                             </button>
                         ))}
                     </div>
                 </div>
             </div>
 
-            {/* ── Body ── */}
-            <div style={{ maxWidth: 1160, margin: "0 auto", padding: "0 48px 80px", display: "flex", gap: 60, alignItems: "flex-start" }}>
+            {/* MOBILE TOC */}
+            <div style={{ padding: "12px 16px" }}>
+                <button
+                    onClick={() => setShowTOC(!showTOC)}
+                    style={{
+                        width: "100%",
+                        padding: "10px",
+                        borderRadius: 10,
+                        background: "rgba(255,255,255,0.05)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        color: "#fff",
+                    }}
+                >
+                    📑 Table of Contents
+                </button>
 
-                {/* Sidebar TOC */}
-                <aside style={{ width: 240, flexShrink: 0, position: "sticky", top: 80, paddingTop: 48 }}>
-                    <p style={{ fontSize: 10, fontFamily: "sans-serif", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#334155", marginBottom: 16 }}>
-                        Table of Contents
-                    </p>
-                    <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                        {sections.map((s) => {
-                            const isActive = activeSection === s.id;
-                            return (
-                                <button
-                                    key={s.id}
-                                    onClick={() => scrollTo(s.id)}
-                                    style={{
-                                        textAlign: "left", background: "none", border: "none",
-                                        padding: "7px 12px", borderRadius: 8, cursor: "pointer",
-                                        fontSize: 12, fontFamily: "sans-serif", lineHeight: 1.4,
-                                        color: isActive ? "#1D9E75" : "#475569",
-                                        background: isActive ? "rgba(29,158,117,0.08)" : "transparent",
-                                        borderLeft: `2px solid ${isActive ? "#1D9E75" : "transparent"}`,
-                                        fontWeight: isActive ? 600 : 400,
-                                        transition: "all 0.15s",
-                                    }}
-                                >
-                                    {s.title}
-                                </button>
-                            );
-                        })}
-                    </nav>
-                </aside>
-
-                {/* Main content */}
-                <main ref={contentRef} style={{ flex: 1, paddingTop: 48 }}>
-
-                    {/* Role badge */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 48, paddingBottom: 24, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                        <div style={{ width: 48, height: 48, borderRadius: 12, background: activeRole === "user" ? "rgba(0,37,110,0.2)" : "rgba(29,158,117,0.15)", border: `1px solid ${activeRole === "user" ? "rgba(0,37,110,0.4)" : "rgba(29,158,117,0.3)"}`, display: "grid", placeItems: "center", fontSize: 22 }}>
-                            {activeRole === "user" ? "🎓" : "🩺"}
-                        </div>
-                        <div>
-                            <h2 style={{ fontSize: 20, fontWeight: 400, color: "#f1f5f9", margin: "0 0 3px", letterSpacing: "-0.01em" }}>
-                                {activeRole === "user" ? "Patient & Student" : "Practitioner & Expert"} Terms
-                            </h2>
-                            <p style={{ fontSize: 13, color: "#475569", margin: 0, fontFamily: "sans-serif" }}>
-                                {activeRole === "user"
-                                    ? "Governs your use of AyurXHub as a patient or student"
-                                    : "Governs your listing and practice on AyurXHub as a verified Ayurvedic practitioner"}
-                            </p>
-                        </div>
-                    </div>
-
-                    {sections.map((section, idx) => (
-                        <section
-                            key={section.id}
-                            id={section.id}
-                            style={{ marginBottom: 56, scrollMarginTop: 100 }}
-                        >
-                            <div style={{ display: "flex", alignItems: "flex-start", gap: 16, marginBottom: 20 }}>
-                                <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(29,158,117,0.1)", border: "1px solid rgba(29,158,117,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "#1D9E75", fontFamily: "sans-serif", fontWeight: 700, flexShrink: 0, marginTop: 4 }}>
-                                    {idx + 1}
-                                </div>
-                                <h3 style={{ fontSize: 20, fontWeight: 400, color: "#f1f5f9", letterSpacing: "-0.01em", margin: 0, lineHeight: 1.3 }}>
-                                    {section.title.replace(/^\d+\.\s/, "")}
-                                </h3>
+                {showTOC && (
+                    <div
+                        style={{
+                            marginTop: 10,
+                            borderRadius: 10,
+                            background: "#111",
+                            padding: 10,
+                        }}
+                    >
+                        {sections.map((s) => (
+                            <div
+                                key={s.id}
+                                onClick={() => scrollTo(s.id)}
+                                style={{
+                                    padding: "8px",
+                                    fontSize: 13,
+                                    color: "#94a3b8",
+                                    cursor: "pointer",
+                                }}
+                            >
+                                {s.title}
                             </div>
+                        ))}
+                    </div>
+                )}
+            </div>
 
-                            <div style={{
-                                background: "rgba(255,255,255,0.02)",
-                                border: "1px solid rgba(255,255,255,0.06)",
-                                borderRadius: 14, padding: "24px 28px",
-                                marginLeft: 48,
-                            }}>
-                                {section.content.split("\n\n").map((para, i) => {
-                                    const isList = para.includes("\n•");
-                                    if (isList) {
-                                        const [intro, ...items] = para.split("\n");
-                                        return (
-                                            <div key={i} style={{ marginBottom: i < section.content.split("\n\n").length - 1 ? 16 : 0 }}>
-                                                {intro && !intro.startsWith("•") && (
-                                                    <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.85, margin: "0 0 10px", fontFamily: "sans-serif" }}>{intro}</p>
-                                                )}
-                                                <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
-                                                    {items.filter(Boolean).map((item, j) => (
-                                                        <li key={j} style={{ display: "flex", gap: 10, marginBottom: 8, alignItems: "flex-start" }}>
-                                                            <span style={{ color: "#1D9E75", flexShrink: 0, marginTop: 2 }}>◆</span>
-                                                            <span style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.8, fontFamily: "sans-serif" }}>{item.replace(/^•\s*/, "")}</span>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        );
-                                    }
-                                    return (
-                                        <p key={i} style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.85, margin: i < section.content.split("\n\n").length - 1 ? "0 0 16px" : 0, fontFamily: "sans-serif" }}>
-                                            {para}
-                                        </p>
-                                    );
-                                })}
+            {/* MAIN CONTENT */}
+            <div style={{ padding: "0 16px 60px" }}>
+                <div style={{ maxWidth: 700, margin: "0 auto" }}>
+                    {sections.map((section, idx) => (
+                        <section key={section.id} id={section.id}>
+                            <h3
+                                style={{
+                                    marginTop: 30,
+                                    marginBottom: 10,
+                                    fontSize: 18,
+                                }}
+                            >
+                                {idx + 1}.{" "}
+                                {section.title.replace(/^\d+\.\s/, "")}
+                            </h3>
+
+                            <div
+                                style={{
+                                    padding: 14,
+                                    borderRadius: 10,
+                                    background: "rgba(255,255,255,0.03)",
+                                    border: "1px solid rgba(255,255,255,0.06)",
+                                }}
+                            >
+                                {section.content.split("\n\n").map((para, i) => (
+                                    <p
+                                        key={i}
+                                        style={{
+                                            fontSize: 14,
+                                            color: "#94a3b8",
+                                            lineHeight: 1.7,
+                                            marginBottom: 10,
+                                            fontFamily: "sans-serif",
+                                        }}
+                                    >
+                                        {para}
+                                    </p>
+                                ))}
                             </div>
                         </section>
                     ))}
 
-                    {/* Acceptance footer */}
-                    <div style={{ marginTop: 60, padding: "28px 32px", borderRadius: 16, background: "linear-gradient(135deg, rgba(29,158,117,0.08), rgba(0,37,110,0.12))", border: "1px solid rgba(29,158,117,0.2)" }}>
-                        <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                            <span style={{ fontSize: 24, flexShrink: 0 }}>📜</span>
-                            <div>
-                                <p style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0", margin: "0 0 6px", fontFamily: "sans-serif" }}>
-                                    By using AyurXHub, you acknowledge that you have read and agree to these Terms
-                                </p>
-                                <p style={{ fontSize: 13, color: "#64748b", margin: 0, lineHeight: 1.7, fontFamily: "sans-serif" }}>
-                                    These terms were last updated on <strong style={{ color: "#94a3b8" }}>{LAST_UPDATED}</strong>. For questions or concerns, contact us at <a href={`mailto:${EMAIL}`} style={{ color: "#1D9E75", textDecoration: "none" }}>{EMAIL}</a>.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Switch CTA */}
-                    <div style={{ marginTop: 32, textAlign: "center" }}>
-                        <p style={{ fontSize: 13, color: "#334155", fontFamily: "sans-serif", marginBottom: 12 }}>
-                            Also read the terms for{" "}
-                            <button
-                                onClick={() => { setActiveRole(activeRole === "user" ? "consultant" : "user"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                                style={{ background: "none", border: "none", color: "#1D9E75", cursor: "pointer", fontSize: 13, fontFamily: "sans-serif", textDecoration: "underline" }}>
-                                {activeRole === "user" ? "Practitioners" : "Patients & Students"}
-                            </button>
+                    {/* FOOTER */}
+                    <div
+                        style={{
+                            marginTop: 40,
+                            padding: 16,
+                            borderRadius: 12,
+                            background: "rgba(29,158,117,0.08)",
+                        }}
+                    >
+                        <p style={{ fontSize: 13 }}>
+                            By using AyurXHub, you agree to these Terms.
+                        </p>
+                        <p style={{ fontSize: 12, color: "#64748b" }}>
+                            Contact: {EMAIL}
                         </p>
                     </div>
-                </main>
+                </div>
             </div>
         </div>
     );

@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
 
 export default function ProtectedRoute({ children, allowedRoles = [] }) {
     const { user, loading } = useAuth();
     const router = useRouter();
+    const pathname = usePathname();
 
     useEffect(() => {
         if (loading) return;
@@ -24,7 +25,7 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
         // Expert verification gate
         if (user.role === "expert") {
             const status = user.verificationStatus;
-            const isOnboarding = window.location.pathname === "/onboarding";
+            const isOnboarding = pathname === "/onboarding";
 
             if (!status || status === "none" || status === "pending" || status === "rejected") {
                 if (!isOnboarding) router.push("/onboarding");

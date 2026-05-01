@@ -270,7 +270,7 @@ export default function ReferencesPage() {
     useEffect(() => {
         const fetchReferences = async () => {
             try {
-                const res = await fetch("http://localhost:5000/api/references");
+                const res = await authAxios.get("/references");
                 const data = await res.json();
                 setInstitutions(data.institutions || []);
                 setEbooks(data.ebooks || []);
@@ -331,18 +331,49 @@ export default function ReferencesPage() {
     return (
         <div style={{ minHeight: "100vh", background: "#f7f9fc" }}>
 
-            <div style={{ padding: "28px 32px", maxWidth: 1200 }}>
-                <div style={{ marginBottom: 28 }}>
-                    <h1 style={{ fontSize: 22, fontWeight: 700, color: "#00256e", marginBottom: 4 }}>
+            <div
+                style={{
+                    padding: "20px 16px",
+                    maxWidth: 1200,
+                    margin: "0 auto",
+                }}
+            >
+                {/* HEADER */}
+                <div style={{ marginBottom: 20 }}>
+                    <h1
+                        style={{
+                            fontSize: "clamp(18px, 4vw, 24px)",
+                            fontWeight: 700,
+                            color: "#00256e",
+                            marginBottom: 6,
+                        }}
+                    >
                         References & Resources
                     </h1>
-                    <p style={{ fontSize: 14, color: "#757682" }}>
+
+                    <p style={{ fontSize: 13, color: "#757682", lineHeight: 1.6 }}>
                         Official Ayurvedic institutions, classical texts, and peer-reviewed journals
                     </p>
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
-                    <div style={{ display: "flex", background: "#ffffff", border: "0.5px solid rgba(197,198,211,0.4)", borderRadius: 12, padding: 4, gap: 2 }}>
+                {/* TABS + SEARCH */}
+                <div
+                    style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 12,
+                        marginBottom: 16,
+                    }}
+                >
+                    {/* SCROLLABLE TABS */}
+                    <div
+                        style={{
+                            display: "flex",
+                            overflowX: "auto",
+                            gap: 6,
+                            paddingBottom: 4,
+                        }}
+                    >
                         {TABS.map(({ key, icon, label, count }) => (
                             <button
                                 key={key}
@@ -350,15 +381,17 @@ export default function ReferencesPage() {
                                 style={{
                                     display: "flex",
                                     alignItems: "center",
-                                    gap: 7,
-                                    padding: "8px 16px",
-                                    borderRadius: 9,
+                                    gap: 6,
+                                    padding: "8px 14px",
+                                    borderRadius: 10,
                                     border: "none",
+                                    whiteSpace: "nowrap",
                                     cursor: "pointer",
-                                    fontSize: 13,
+                                    fontSize: 12,
                                     fontWeight: 500,
-                                    background: tab === key ? "#00256e" : "transparent",
-                                    color: tab === key ? "#ffffff" : "#757682",
+                                    background: tab === key ? "#00256e" : "#fff",
+                                    color: tab === key ? "#fff" : "#757682",
+                                    border: "0.5px solid rgba(197,198,211,0.4)",
                                 }}
                             >
                                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
@@ -372,7 +405,6 @@ export default function ReferencesPage() {
                                         padding: "1px 6px",
                                         borderRadius: 20,
                                         background: tab === key ? "rgba(255,255,255,0.2)" : "#f2f4f7",
-                                        color: tab === key ? "#ffffff" : "#757682",
                                     }}
                                 >
                                     {count}
@@ -381,26 +413,40 @@ export default function ReferencesPage() {
                         ))}
                     </div>
 
+                    {/* SEARCH FULL WIDTH */}
                     <input
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder={tab === "journals" ? "Search journals…" : tab === "institutions" ? "Search institutions…" : "Search texts…"}
+                        placeholder={
+                            tab === "journals"
+                                ? "Search journals…"
+                                : tab === "institutions"
+                                    ? "Search institutions…"
+                                    : "Search texts…"
+                        }
                         style={{
-                            padding: "9px 14px",
+                            padding: "10px 14px",
                             borderRadius: 10,
                             border: "0.5px solid rgba(197,198,211,0.5)",
-                            background: "#ffffff",
-                            color: "#191c1e",
+                            width: "100%",
                             fontSize: 13,
                             outline: "none",
-                            width: 220,
                         }}
                     />
                 </div>
 
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 24 }}>
+                {/* FILTERS */}
+                <div
+                    style={{
+                        display: "flex",
+                        gap: 8,
+                        flexWrap: "wrap",
+                        marginBottom: 20,
+                    }}
+                >
                     {filterOptions.map((opt) => {
                         const isActive = filterType === opt;
+
                         const chipColor =
                             tab === "institutions"
                                 ? TYPE_COLORS[opt] || defaultColor
@@ -413,15 +459,21 @@ export default function ReferencesPage() {
                                 key={opt}
                                 onClick={() => setFilterType(opt)}
                                 style={{
-                                    padding: "5px 14px",
+                                    padding: "6px 12px",
                                     borderRadius: 20,
-                                    border: "0.5px solid",
                                     fontSize: 12,
                                     cursor: "pointer",
-                                    fontWeight: isActive ? 600 : 400,
-                                    background: isActive ? (opt === "All" ? "#00256e" : chipColor.bg) : "#ffffff",
-                                    color: isActive ? (opt === "All" ? "#ffffff" : chipColor.text) : "#757682",
-                                    borderColor: isActive ? (opt === "All" ? "#00256e" : chipColor.bg) : "rgba(197,198,211,0.5)",
+                                    background: isActive
+                                        ? opt === "All"
+                                            ? "#00256e"
+                                            : chipColor.bg
+                                        : "#fff",
+                                    color: isActive
+                                        ? opt === "All"
+                                            ? "#fff"
+                                            : chipColor.text
+                                        : "#757682",
+                                    border: "0.5px solid rgba(197,198,211,0.5)",
                                 }}
                             >
                                 {opt}
@@ -430,25 +482,39 @@ export default function ReferencesPage() {
                     })}
                 </div>
 
+                {/* CONTENT */}
                 {loading && tab !== "journals" ? (
-                    <div style={{ textAlign: "center", padding: 80, color: "#757682" }}>Loading...</div>
+                    <div style={{ textAlign: "center", padding: 60 }}>Loading...</div>
                 ) : activeData.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: 80, color: "#757682" }}>
+                    <div style={{ textAlign: "center", padding: 60 }}>
                         No results found
                     </div>
                 ) : (
                     <>
-                        <p style={{ fontSize: 12, color: "#757682", marginBottom: 16 }}>
-                            Showing {activeData.length} {tab === "journals" ? "journal" : tab === "institutions" ? "institution" : "text"}
-                            {activeData.length !== 1 ? "s" : ""}
+                        <p style={{ fontSize: 12, marginBottom: 12 }}>
+                            Showing {activeData.length}
                         </p>
 
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+                        {/* GRID RESPONSIVE */}
+                        <div
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns:
+                                    "repeat(auto-fit, minmax(260px, 1fr))",
+                                gap: 14,
+                            }}
+                        >
                             {tab === "institutions"
-                                ? activeData.map((item) => <InstitutionCard key={item.url} item={item} />)
+                                ? activeData.map((item) => (
+                                    <InstitutionCard key={item.url} item={item} />
+                                ))
                                 : tab === "ebooks"
-                                    ? activeData.map((item) => <EbookCard key={item.url} item={item} />)
-                                    : activeData.map((item) => <JournalCard key={item.url} item={item} />)}
+                                    ? activeData.map((item) => (
+                                        <EbookCard key={item.url} item={item} />
+                                    ))
+                                    : activeData.map((item) => (
+                                        <JournalCard key={item.url} item={item} />
+                                    ))}
                         </div>
                     </>
                 )}
