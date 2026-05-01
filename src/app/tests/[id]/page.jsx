@@ -72,10 +72,6 @@ function TestAttempt() {
     const streamRef = useRef(null);
     const canvasRef = useRef(null);
     const faceTimerRef = useRef(null);
-<<<<<<< HEAD
-=======
-    const [testError, setTestError] = useState("");
->>>>>>> 923ac78263ccd6961891ea2e62a26abaf863aded
     const timerRef = useRef(null);
     const submitRef = useRef(null); // stable ref for submit in timer
 
@@ -287,48 +283,6 @@ function TestAttempt() {
         setWebcamActive(false);
     };
 
-<<<<<<< HEAD
-=======
-    // ── Start test ───────────────────────────────────────────────────────────
-    const handleStart = async () => {
-        setPhase("loading");
-        try {
-            const res = await authAxios.post(`/tests/${id}/start`);
-            const { attempt, questions: qs, timeRemaining } = res.data;
-
-            // ── SECURITY: Strip answer data from question objects ────────────
-            // correctIndex and explanation must never be stored in client state
-            // during an active test — they are only returned by /submit.
-            // Even if the backend accidentally includes them, we drop them here.
-            const safeQs = qs.map(({ correctIndex: _ci, explanation: _ex, ...q }) => q);
-
-            // ── ANTI-CHEAT #4: Randomize option display order ────────────────
-            // Each question's options are shown in a shuffled order unique to
-            // this (question, attempt) pair. We store the real correctIndex in
-            // `answers`, never the display index.
-            const orders = {};
-            safeQs.forEach(q => { orders[q._id] = getOptionOrder(q._id, attempt._id); });
-            setOptOrders(orders);
-
-            setQuestions(safeQs);
-            setAttemptId(attempt._id);
-            setTimeLeft(timeRemaining);
-            setAnswers({});
-            setCurrentQ(0);
-            setTabViolations(0);
-
-            await enterFullscreen();
-
-            if (isPaid || testMeta?.type === "paid") await startWebcam();
-
-            setPhase("taking");
-        } catch (e) {
-            setTestError(e.response?.data?.message || "Failed to start test");
-            setPhase("intro");
-        }
-    };
-
->>>>>>> 923ac78263ccd6961891ea2e62a26abaf863aded
     // ── Submit ───────────────────────────────────────────────────────────────
     const handleSubmit = useCallback(async (autoSubmit = false, reason = "") => {
         if (submitting || !attemptId) return;
