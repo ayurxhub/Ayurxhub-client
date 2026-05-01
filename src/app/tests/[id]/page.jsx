@@ -58,6 +58,7 @@ function TestAttempt() {
     const [review, setReview] = useState([]);
     const [reviewMode, setReviewMode] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [testError, setTestError] = useState(null);
     const [showPalette, setShowPalette] = useState(false); // mobile palette toggle
 
     // Anti-cheat state
