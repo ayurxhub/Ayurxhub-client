@@ -223,7 +223,7 @@ function TestRow({ test, attempt, onStart }) {
                 </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                {!isFree && test.price > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: "#1e40af" }}>₹{test.price}</span>}
+                {/* ₹{test.price} — temporarily hidden, all tests free */}
                 <button onClick={onStart} style={{ padding: "8px 20px", borderRadius: 10, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, background: isFree ? "linear-gradient(135deg, #0e4f3b, #1D9E75)" : "linear-gradient(135deg, #1e40af, #3b82f6)", color: "#fff", whiteSpace: "nowrap" }}>
                     {attempt ? "Retake →" : "Start →"}
                 </button>
