@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../context/AuthContext";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
+import Navbar from "../../../components/Navbar";
 
 import ProtectedRoute from "../../../components/ProtectedRoute";
 

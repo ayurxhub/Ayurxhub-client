@@ -5,6 +5,7 @@ import { useAuth } from "./context/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
 import FeaturedBlogSection from "./components/FeaturedBlogSection";
+import FeaturedHomeSection from "./components/FeaturedHomeSection";
 
 // ─── Stats hook ───────────────────────────────────────────────────────────────
 function useCountUp(target: number, duration = 1800) {
@@ -294,6 +295,11 @@ export default function LandingPage() {
   `}</style>
       </section>
 
+      {/* ── Featured content (blogs + courses marked as featured) ── */}
+      <div style={{ paddingTop: 56 }}>
+        <FeaturedHomeSection />
+      </div>
+
       <section className="offer-section">
         <div className="offer-top">
           <p>WHAT WE OFFER</p>
@@ -357,7 +363,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <FeaturedBlogSection />
 
       {/* ── Test Series CTA — two-column on desktop ── */}
       <section style={{ padding: "0 32px 60px", maxWidth: 1280, margin: "0 auto" }}>

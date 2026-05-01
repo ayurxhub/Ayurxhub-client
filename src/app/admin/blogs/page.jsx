@@ -296,12 +296,12 @@ export default function AdminBlogs() {
     useEffect(() => { load(); }, []); // eslint-disable-line
 
     const handleCreate = async (fd) => {
-        await authAxios.post("/blogs", fd, { headers: { "Content-Type": "multipart/form-data" } });
+        await authAxios.post("/blogs", fd);
         setView("list"); load();
     };
 
     const handleUpdate = async (fd) => {
-        await authAxios.put(`/blogs/${editing._id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+        await authAxios.put(`/blogs/${editing._id}`, fd);
         setView("list"); setEditing(null); load();
     };
 

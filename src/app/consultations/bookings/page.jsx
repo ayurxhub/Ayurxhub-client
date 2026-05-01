@@ -25,14 +25,13 @@ function getSessionEnd(booking) {
     return new Date(`${dateStr}T${booking.endTime}`);
 }
 
-// Session states relative to now
 function getSessionState(booking) {
     if (booking.status !== "confirmed") return "not-confirmed";
     const now = new Date();
     const start = getSessionStart(booking);
     const end = getSessionEnd(booking);
-    const joinFrom = new Date(start.getTime() - 15 * 60000); // 15 min early
-    const joinUntil = new Date(end.getTime() + 15 * 60000);  // 15 min grace
+    const joinFrom = new Date(start.getTime() - 15 * 60000);
+    const joinUntil = new Date(end.getTime() + 15 * 60000);
 
     if (now < joinFrom) return "upcoming";
     if (now >= joinFrom && now <= joinUntil) return "live";
@@ -51,10 +50,7 @@ function useCountdown(booking) {
             const start = getSessionStart(booking);
             const diff = start - now;
 
-            if (diff <= 0) {
-                setLabel("now");
-                return;
-            }
+            if (diff <= 0) { setLabel("now"); return; }
             const totalMins = Math.floor(diff / 60000);
             const days = Math.floor(totalMins / 1440);
             const hrs = Math.floor((totalMins % 1440) / 60);
@@ -105,8 +101,9 @@ function BookingsList() {
     const [submittingReview, setSubmittingReview] = useState(false);
     const [successBanner, setSuccessBanner] = useState(searchParams.get("success") === "1");
     const [actionError, setActionError] = useState("");
-    const [cancelPrompt, setCancelPrompt] = useState(null); // holds booking id
+    const [cancelPrompt, setCancelPrompt] = useState(null);
     const [cancelReason, setCancelReason] = useState("");
+
     const isExpert = user?.role === "expert";
     const TABS = isExpert
         ? ["pending", "confirmed", "completed", "all"]
@@ -147,8 +144,7 @@ function BookingsList() {
         catch (e) { setActionError(e.response?.data?.message || "Failed to complete"); }
     };
 
-    // CHANGE entire handleCancel to
-    const handleCancel = async (id) => {
+    const handleCancel = (id) => {
         setCancelPrompt(id);
     };
 
@@ -165,6 +161,7 @@ function BookingsList() {
             setCancelReason("");
         }
     };
+
     const handleReviewSubmit = async () => {
         setSubmittingReview(true);
         try {
@@ -182,7 +179,6 @@ function BookingsList() {
 
     return (
         <div style={{ minHeight: "100vh", background: "#f7f9fc" }}>
-
             <div style={{ padding: "28px 32px", maxWidth: 860 }}>
 
                 {/* Success banner */}
@@ -280,11 +276,78 @@ function BookingsList() {
                 )}
             </div>
 
-            {/* Review Modal */}
+            {/* ── Action Error Toast ── */}
+            {actionError && (
+                <div style={{
+                    position: "fixed", bottom: 24, right: 24, zIndex: 9999,
+                    background: "#fee2e2", color: "#991b1b",
+                    border: "1px solid #fca5a5", borderRadius: 12,
+                    padding: "12px 18px", fontSize: 14, fontWeight: 500,
+                }}>
+                    {actionError}
+                    <button onClick={() => setActionError("")} style={{
+                        marginLeft: 12, background: "none", border: "none",
+                        cursor: "pointer", color: "#991b1b", fontSize: 16,
+                    }}>×</button>
+                </div>
+            )}
+
+            {/* ── Cancel Confirmation Modal ── */}
+            {cancelPrompt && (
+                <div style={{
+                    position: "fixed", inset: 0, zIndex: 99998,
+                    background: "rgba(0,0,0,0.4)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                    <div style={{ background: "#fff", borderRadius: 16, padding: 28, maxWidth: 400, width: "90%" }}>
+                        <p style={{ fontSize: 15, fontWeight: 600, color: "#111827", marginBottom: 4 }}>Cancel booking</p>
+                        <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 14 }}>
+                            Are you sure? This action cannot be undone.
+                        </p>
+                        <textarea
+                            placeholder="Reason for cancellation (optional)"
+                            rows={3}
+                            value={cancelReason}
+                            onChange={(e) => setCancelReason(e.target.value)}
+                            style={{
+                                width: "100%", padding: "10px 12px", borderRadius: 8,
+                                border: "1px solid #e5e7eb", fontSize: 13,
+                                resize: "vertical", marginBottom: 16,
+                                fontFamily: "inherit", boxSizing: "border-box",
+                                outline: "none",
+                            }}
+                        />
+                        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                            <button
+                                onClick={() => { setCancelPrompt(null); setCancelReason(""); }}
+                                style={{
+                                    padding: "9px 20px", borderRadius: 8,
+                                    border: "1px solid #e5e7eb", background: "#fff",
+                                    color: "#374151", fontSize: 14, cursor: "pointer",
+                                }}>
+                                Back
+                            </button>
+                            <button
+                                onClick={confirmCancel}
+                                disabled={cancelling === cancelPrompt}
+                                style={{
+                                    padding: "9px 20px", borderRadius: 8,
+                                    border: "none", background: "#dc2626",
+                                    color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer",
+                                }}>
+                                {cancelling === cancelPrompt ? "Cancelling…" : "Cancel booking"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Review Modal ── */}
             {reviewModal && (
                 <div style={{
                     position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
-                    display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    zIndex: 100, padding: 20,
                 }}>
                     <div style={{ background: "#fff", borderRadius: 20, padding: 28, width: "100%", maxWidth: 460 }}>
                         <h2 style={{ fontSize: 18, fontWeight: 700, color: "#00256e", marginBottom: 6 }}>Leave a Review</h2>
@@ -292,7 +355,10 @@ function BookingsList() {
                         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
                             {[1, 2, 3, 4, 5].map(star => (
                                 <button key={star} onClick={() => setReviewForm({ ...reviewForm, rating: star })}
-                                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 32, color: star <= reviewForm.rating ? "#EF9F27" : "#d1d5db", padding: 0 }}>
+                                    style={{
+                                        background: "none", border: "none", cursor: "pointer",
+                                        fontSize: 32, color: star <= reviewForm.rating ? "#EF9F27" : "#d1d5db", padding: 0,
+                                    }}>
                                     ★
                                 </button>
                             ))}
@@ -300,7 +366,8 @@ function BookingsList() {
                                 {["", "Poor", "Fair", "Good", "Very Good", "Excellent"][reviewForm.rating]}
                             </span>
                         </div>
-                        <textarea value={reviewForm.comment}
+                        <textarea
+                            value={reviewForm.comment}
                             onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
                             placeholder="Share your experience (optional)..."
                             rows={4}
@@ -309,14 +376,21 @@ function BookingsList() {
                                 border: "0.5px solid rgba(197,198,211,0.5)", background: "#f7f9fc",
                                 color: "#191c1e", fontSize: 13, fontFamily: "inherit",
                                 outline: "none", resize: "vertical", boxSizing: "border-box", marginBottom: 18,
-                            }} />
+                            }}
+                        />
                         <div style={{ display: "flex", gap: 10 }}>
-                            <button onClick={() => setReviewModal(null)}
-                                style={{ flex: 1, padding: "11px", borderRadius: 10, border: "0.5px solid rgba(197,198,211,0.5)", background: "transparent", color: "#444651", fontSize: 13, cursor: "pointer" }}>
+                            <button onClick={() => setReviewModal(null)} style={{
+                                flex: 1, padding: "11px", borderRadius: 10,
+                                border: "0.5px solid rgba(197,198,211,0.5)",
+                                background: "transparent", color: "#444651", fontSize: 13, cursor: "pointer",
+                            }}>
                                 Cancel
                             </button>
-                            <button onClick={handleReviewSubmit} disabled={submittingReview}
-                                style={{ flex: 2, padding: "11px", borderRadius: 10, background: "#00256e", color: "#fff", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                            <button onClick={handleReviewSubmit} disabled={submittingReview} style={{
+                                flex: 2, padding: "11px", borderRadius: 10,
+                                background: "#00256e", color: "#fff", border: "none",
+                                fontSize: 14, fontWeight: 600, cursor: "pointer",
+                            }}>
                                 {submittingReview ? "Submitting…" : "Submit Review"}
                             </button>
                         </div>
@@ -334,7 +408,18 @@ function BookingsList() {
 }
 
 // ── Booking Card ──────────────────────────────────────────────────────────────
-function BookingCard({ booking, isExpert, otherPerson, initials, onConfirm, onComplete, onCancel, cancelling, onReview, onJoin }) {
+function BookingCard({
+    booking,
+    isExpert,
+    otherPerson,
+    initials,
+    onConfirm,
+    onComplete,
+    onCancel,
+    cancelling,
+    onReview,
+    onJoin,
+}) {
     const sessionState = getSessionState(booking);
     const countdown = useCountdown(booking);
     const isLive = sessionState === "live";
@@ -350,7 +435,7 @@ function BookingCard({ booking, isExpert, otherPerson, initials, onConfirm, onCo
             boxShadow: isLive ? "0 0 0 4px rgba(29,158,117,0.08)" : "0 1px 6px rgba(0,0,0,0.05)",
             overflow: "hidden", animation: "fadeIn 0.2s ease",
         }}>
-            {/* ── Live banner ── */}
+            {/* Live banner */}
             {isLive && (
                 <div style={{
                     background: "#1D9E75", padding: "10px 20px",
@@ -371,7 +456,7 @@ function BookingCard({ booking, isExpert, otherPerson, initials, onConfirm, onCo
                 </div>
             )}
 
-            {/* ── Pending banner ── */}
+            {/* Pending banner */}
             {booking.status === "pending" && !isExpert && (
                 <div style={{
                     background: "#fef9c3", padding: "9px 20px",
@@ -435,7 +520,7 @@ function BookingCard({ booking, isExpert, otherPerson, initials, onConfirm, onCo
                     ))}
                 </div>
 
-                {/* Countdown for confirmed upcoming */}
+                {/* Countdown */}
                 {booking.status === "confirmed" && sessionState === "upcoming" && countdown && (
                     <div style={{
                         padding: "10px 14px", borderRadius: 10, marginBottom: 14,
@@ -454,7 +539,7 @@ function BookingCard({ booking, isExpert, otherPerson, initials, onConfirm, onCo
                     </div>
                 )}
 
-                {/* Meeting link (once confirmed) */}
+                {/* Meeting link */}
                 {booking.status === "confirmed" && booking.meetingLink && sessionState !== "live" && (
                     <div style={{
                         padding: "10px 14px", borderRadius: 10, marginBottom: 14,
@@ -485,7 +570,7 @@ function BookingCard({ booking, isExpert, otherPerson, initials, onConfirm, onCo
                     </div>
                 )}
 
-                {/* Student notes (visible to expert) */}
+                {/* Student notes */}
                 {isExpert && booking.notes?.studentNotes && (
                     <div style={{ padding: "10px 14px", borderRadius: 10, background: "#fef9c3", marginBottom: 14 }}>
                         <p style={{ fontSize: 11, fontWeight: 600, color: "#854d0e", marginBottom: 4 }}>📝 Patient notes</p>
@@ -495,78 +580,43 @@ function BookingCard({ booking, isExpert, otherPerson, initials, onConfirm, onCo
 
                 {/* Actions */}
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-
-                    {/* PRIMARY: Join (live) */}
                     {isLive && (
                         <button onClick={onJoin} style={{
-                            ...btnBase, background: "#1D9E75", color: "#fff", border: "none",
-                            fontWeight: 700, padding: "9px 20px",
+                            ...btnBase, background: "#1D9E75", color: "#fff",
+                            border: "none", fontWeight: 700, padding: "9px 20px",
                         }}>
                             📹 Join Video Call
                         </button>
                     )}
 
-                    {/* Expert: confirm pending */}
                     {isExpert && booking.status === "pending" && (
                         <button onClick={() => onConfirm(booking._id)} style={{ ...btnBase, background: "#00256e", color: "#fff", border: "none" }}>
                             ✓ Confirm Booking
                         </button>
                     )}
 
-                    {/* Expert: mark complete */}
                     {isExpert && booking.status === "confirmed" && sessionState === "ended" && (
                         <button onClick={() => onComplete(booking._id)} style={{ ...btnBase, background: "#1e40af", color: "#fff", border: "none" }}>
                             Mark Complete
                         </button>
                     )}
 
-                    {/* Student: leave review */}
                     {!isExpert && booking.status === "completed" && !booking.reviewLeft && (
                         <button onClick={onReview} style={{ ...btnBase, color: "#1e40af", borderColor: "#bfdbfe" }}>
                             ⭐ Leave Review
                         </button>
                     )}
 
-                    {/* Cancel */}
                     {["pending", "confirmed"].includes(booking.status) && (
-                        <button onClick={() => onCancel(booking._id)} disabled={cancelling === booking._id}
+                        <button
+                            onClick={() => onCancel(booking._id)}
+                            disabled={cancelling === booking._id}
                             style={{ ...btnBase, color: "#dc2626", borderColor: "#fecaca" }}>
                             {cancelling === booking._id ? "Cancelling…" : "Cancel"}
                         </button>
                     )}
                 </div>
             </div>
-            {actionError && (
-                <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9999, background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: 12, padding: "12px 18px", fontSize: 14, fontWeight: 500 }}>
-                    {actionError}
-                    <button onClick={() => setActionError("")} style={{ marginLeft: 12, background: "none", border: "none", cursor: "pointer", color: "#991b1b", fontSize: 16 }}>×</button>
-                </div>
-            )}
-
-            {cancelPrompt && (
-                <div style={{ position: "fixed", inset: 0, zIndex: 99998, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <div style={{ background: "#fff", borderRadius: 16, padding: 28, maxWidth: 400, width: "90%" }}>
-                        <p style={{ fontSize: 15, fontWeight: 500, color: "#111827", marginBottom: 12 }}>Cancel booking</p>
-                        <textarea
-                            placeholder="Reason for cancellation (optional)"
-                            rows={3}
-                            value={cancelReason}
-                            onChange={(e) => setCancelReason(e.target.value)}
-                            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 13, resize: "vertical", marginBottom: 16 }}
-                        />
-                        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                            <button onClick={() => { setCancelPrompt(null); setCancelReason(""); }}
-                                style={{ padding: "9px 20px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#fff", color: "#374151", fontSize: 14, cursor: "pointer" }}>
-                                Back
-                            </button>
-                            <button onClick={confirmCancel}
-                                style={{ padding: "9px 20px", borderRadius: 8, border: "none", background: "#dc2626", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-                                Cancel booking
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

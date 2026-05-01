@@ -73,6 +73,15 @@ export default function AdminMaterials() {
         }
     };
 
+    const handleToggleFeatured = async (id) => {
+        try {
+            await authAxios.put(`/materials/${id}/feature`);
+            fetchMaterials();
+        } catch (err) {
+            setMsg({ text: err.response?.data?.message || "Failed", type: "error" });
+        }
+    };
+
     const handleDelete = async (id) => {
         if (!window.confirm("Delete this material?")) return;
         try {
@@ -209,6 +218,11 @@ export default function AdminMaterials() {
                                         <button onClick={() => handleTogglePublish(m._id)}
                                             style={{ ...actionBtn, color: m.isPublished ? "#EF9F27" : "#1D9E75", borderColor: m.isPublished ? "rgba(239,159,39,0.3)" : "rgba(29,158,117,0.3)" }}>
                                             {m.isPublished ? "Unpublish" : "Publish"}
+                                        </button>
+                                        <button onClick={() => handleToggleFeatured(m._id)}
+                                            title={m.isFeatured ? "Remove from home screen" : "Feature on home screen"}
+                                            style={{ ...actionBtn, color: m.isFeatured ? "#f59e0b" : "#6b7280", borderColor: m.isFeatured ? "rgba(245,158,11,0.4)" : "rgba(107,114,128,0.3)", background: m.isFeatured ? "rgba(245,158,11,0.08)" : "transparent" }}>
+                                            {m.isFeatured ? "⭐ Featured" : "☆ Feature"}
                                         </button>
                                         <button onClick={() => handleDelete(m._id)}
                                             style={{ ...actionBtn, color: "#E24B4A", borderColor: "rgba(226,75,74,0.3)" }}>

@@ -25,10 +25,10 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
         // Expert verification gate
         if (user.role === "expert") {
             const status = user.verificationStatus;
-            const isOnboarding = pathname === "/onboarding";
+            const isOnboarding = pathname === "/consultations/onboarding";
 
             if (!status || status === "none" || status === "pending" || status === "rejected") {
-                if (!isOnboarding) router.push("/onboarding");
+                if (!isOnboarding) router.push("/consultations/onboarding");
             }
         }
     }, [user, loading]);

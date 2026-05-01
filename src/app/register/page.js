@@ -182,6 +182,12 @@ export default function RegisterPage() {
             <div className="register-frame">
                 <div className="register-hero">
                     <div className="hero-content">
+
+                        <div className="back-row">
+                            <button onClick={() => router.back()}>
+                                ← Back
+                            </button>
+                        </div>
                         <div className="brand-row">
                             <img
                                 src="/Ayurxhub logo.png"
@@ -190,6 +196,8 @@ export default function RegisterPage() {
                             />
                             <span>AyurXHub</span>
                         </div>
+
+
 
                         <h1>
                             Join the Ayurveda
@@ -374,6 +382,26 @@ function ResponsiveStyles() {
                     radial-gradient(circle at top right, rgba(32,65,145,0.28), transparent 24%),
                     #11151d;
             }
+                    .back-row {
+    margin-bottom: 14px;
+}
+
+.back-row button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,0.75);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+}
+
+.back-row button:hover {
+    color: #ffffff;
+}
 
             .register-frame {
                 width: 100%;
