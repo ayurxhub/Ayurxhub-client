@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "./context/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
+import FeaturedBlogSection from "./components/FeaturedBlogSection";
 
 // ─── Stats hook ───────────────────────────────────────────────────────────────
 function useCountUp(target: number, duration = 1800) {
@@ -355,6 +356,8 @@ export default function LandingPage() {
           ))}
         </div>
       </section>
+
+      <FeaturedBlogSection />
 
       {/* ── Test Series CTA — two-column on desktop ── */}
       <section style={{ padding: "0 32px 60px", maxWidth: 1280, margin: "0 auto" }}>

@@ -1,43 +1,80 @@
 "use client";
-import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from "react";
 import axios from "axios";
 
 const AuthContext = createContext(null);
-const API = "http://localhost:5000/api";
+
+// ✅ FIX 1: Use env var, fallback to localhost
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
-    const accessTokenRef = useRef(null); // In-memory only — not localStorage
+    const accessTokenRef = useRef(null);
 
     const setSession = (token, userData) => {
         accessTokenRef.current = token;
         setUser(userData);
     };
 
-    // Silent refresh on app load (uses HttpOnly cookie automatically)
+    // ✅ FIX 2: Create authAxios ONCE with useMemo — not on every render
+    const authAxios = useMemo(() => {
+        const instance = axios.create({ baseURL: API, withCredentials: true });
+
+        instance.interceptors.request.use((config) => {
+            if (accessTokenRef.current) {
+                config.headers.Authorization = `Bearer ${accessTokenRef.current}`;
+            }
+            return config;
+        });
+
+        instance.interceptors.response.use(
+            (res) => res,
+            async (error) => {
+                const original = error.config;
+                if (error.response?.status === 401 && !original._retry) {
+                    original._retry = true;
+                    try {
+                        const res = await axios.post(`${API}/auth/refresh`, {}, { withCredentials: true });
+                        accessTokenRef.current = res.data.accessToken;
+                        original.headers.Authorization = `Bearer ${res.data.accessToken}`;
+                        return instance(original);
+                    } catch {
+                        accessTokenRef.current = null;
+                        setUser(null);
+                    }
+                }
+                return Promise.reject(error);
+            }
+        );
+
+        return instance;
+    }, []); // ✅ Created once, never recreated
+
+    // Silent refresh on app load
     useEffect(() => {
         const initAuth = async () => {
             try {
                 const res = await axios.post(`${API}/auth/refresh`, {}, { withCredentials: true });
-                setSession(res.data.accessToken, res.data.user ?? null);
-                // Fetch user if not returned
-                if (!res.data.user) {
+                accessTokenRef.current = res.data.accessToken;
+                if (res.data.user) {
+                    setUser(res.data.user);
+                } else {
                     const me = await axios.get(`${API}/auth/me`, {
                         headers: { Authorization: `Bearer ${res.data.accessToken}` },
                     });
                     setUser(me.data.user);
                 }
             } catch {
-                // No valid session — user stays null
+                setUser(null);
             } finally {
-                setLoading(false);
+                setLoading(false); // ✅ Always runs
             }
         };
         initAuth();
     }, []);
 
-    // Auto-refresh access token every 14 minutes
+    // Auto-refresh every 14 minutes
     useEffect(() => {
         if (!user) return;
         const interval = setInterval(async () => {
@@ -45,7 +82,8 @@ export function AuthProvider({ children }) {
                 const res = await axios.post(`${API}/auth/refresh`, {}, { withCredentials: true });
                 accessTokenRef.current = res.data.accessToken;
             } catch {
-                logout(); // Refresh failed — force logout
+                accessTokenRef.current = null;
+                setUser(null);
             }
         }, 14 * 60 * 1000);
         return () => clearInterval(interval);
@@ -63,7 +101,6 @@ export function AuthProvider({ children }) {
         return res.data.user;
     };
 
-    // Google OAuth login — idToken from Firebase, role only needed for new users
     const loginWithGoogle = async (idToken, role = null) => {
         const payload = { idToken };
         if (role) payload.role = role;
@@ -75,42 +112,12 @@ export function AuthProvider({ children }) {
     const logout = useCallback(async () => {
         try {
             await authAxios.post("/auth/logout");
-        } catch { } // Still clear client state even if request fails
+        } catch { }
         accessTokenRef.current = null;
         setUser(null);
-    }, []);
-
-    // Axios instance with auto-token injection
-    const authAxios = axios.create({ baseURL: API, withCredentials: true });
-    authAxios.interceptors.request.use((config) => {
-        if (accessTokenRef.current) {
-            config.headers.Authorization = `Bearer ${accessTokenRef.current}`;
-        }
-        return config;
-    });
-
-    // Auto-retry on 401 with token refresh
-    authAxios.interceptors.response.use(
-        (res) => res,
-        async (error) => {
-            const original = error.config;
-            if (error.response?.status === 401 && !original._retry) {
-                original._retry = true;
-                try {
-                    const res = await axios.post(`${API}/auth/refresh`, {}, { withCredentials: true });
-                    accessTokenRef.current = res.data.accessToken;
-                    original.headers.Authorization = `Bearer ${res.data.accessToken}`;
-                    return authAxios(original);
-                } catch {
-                    logout();
-                }
-            }
-            return Promise.reject(error);
-        }
-    );
+    }, [authAxios]);
 
     return (
-
         <AuthContext.Provider value={{ user, setUser, loading, register, login, loginWithGoogle, logout, authAxios }}>
             {children}
         </AuthContext.Provider>

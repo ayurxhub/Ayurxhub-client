@@ -36,6 +36,7 @@ export default function TestsPage() {
 function ChapterwiseBanner({ onNavigate }) {
   return (
     <div
+      className="chapter-banner"
       onClick={onNavigate}
       style={{
         background: "linear-gradient(135deg, #00256e 0%, #0a3d8f 55%, #0e4f3b 100%)",
@@ -63,6 +64,7 @@ function ChapterwiseBanner({ onNavigate }) {
       </div>
 
       <div
+        className="chapter-banner-btn"
         style={{
           background: "rgba(255,255,255,0.12)",
           border: "1px solid rgba(255,255,255,0.2)",
@@ -117,7 +119,7 @@ function TestListing() {
     subjects.length > 0
       ? subjects.map((s, index) => {
         const fallback =
-          FALLBACK_SUBJECTS.find(f => f.name === s.name) ||
+          FALLBACK_SUBJECTS.find((f) => f.name === s.name) ||
           FALLBACK_SUBJECTS[index % FALLBACK_SUBJECTS.length];
 
         return {
@@ -129,7 +131,7 @@ function TestListing() {
       : FALLBACK_SUBJECTS;
 
   const attemptMap = {};
-  attempts.forEach(a => {
+  attempts.forEach((a) => {
     const tid = a.test?._id;
     if (!tid) return;
     if (!attemptMap[tid] || a.percentage > attemptMap[tid].percentage) {
@@ -137,7 +139,7 @@ function TestListing() {
     }
   });
 
-  const filteredSubjects = subjectMetaList.filter(s =>
+  const filteredSubjects = subjectMetaList.filter((s) =>
     !search || s.name.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -145,11 +147,11 @@ function TestListing() {
     ? bySubject[activeSubject] || { free: [], paid: [] }
     : null;
 
-  const activeMeta = subjectMetaList.find(s => s.name === activeSubject);
+  const activeMeta = subjectMetaList.find((s) => s.name === activeSubject);
 
   return (
     <div style={{ minHeight: "100vh", background: "#f7f9fc" }}>
-      <div style={{ padding: "28px 32px", maxWidth: 1100 }}>
+      <div className="tests-page-wrap" style={{ padding: "28px 32px", maxWidth: 1100 }}>
         <div style={{ marginBottom: 24 }}>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: "#00256e", margin: "0 0 4px" }}>
             Test Series
@@ -159,7 +161,7 @@ function TestListing() {
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: 12, marginBottom: 28 }}>
+        <div className="stats-row" style={{ display: "flex", gap: 12, marginBottom: 28 }}>
           {[
             { label: "Attempted", value: attempts.length, icon: "📝" },
             {
@@ -169,9 +171,10 @@ function TestListing() {
                 : "—",
               icon: "📊",
             },
-            { label: "Passed", value: attempts.filter(a => a.passed).length, icon: "✅" },
+            { label: "Passed", value: attempts.filter((a) => a.passed).length, icon: "✅" },
           ].map(({ label, value, icon }) => (
             <div
+              className="stats-card"
               key={label}
               style={{
                 background: "#fff",
@@ -191,14 +194,16 @@ function TestListing() {
           ))}
         </div>
 
-        <ChapterwiseBanner onNavigate={() => router.push("/tests/chapterwise")} />
+        <div className="desktop-banner-slot">
+          <ChapterwiseBanner onNavigate={() => router.push("/tests/chapterwise")} />
+        </div>
 
-        <div style={{ display: "flex", gap: 24 }}>
-          <div style={{ width: 220, flexShrink: 0 }}>
+        <div className="tests-main-layout" style={{ display: "flex", gap: 24 }}>
+          <div className="subject-sidebar" style={{ width: 220, flexShrink: 0 }}>
             <input
-              placeholder="Search subject…"
+              placeholder="Search subject..."
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
               style={{
                 width: "100%",
                 padding: "8px 12px",
@@ -213,8 +218,11 @@ function TestListing() {
               }}
             />
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-              {filteredSubjects.map(s => {
+            <div
+              className="subject-list"
+              style={{ display: "flex", flexDirection: "column", gap: 3 }}
+            >
+              {filteredSubjects.map((s) => {
                 const data = bySubject[s.name] || { free: [], paid: [] };
                 const total = data.free.length + data.paid.length;
                 const isActive = activeSubject === s.name;
@@ -281,7 +289,11 @@ function TestListing() {
             </div>
           </div>
 
-          <div style={{ flex: 1 }}>
+          <div className="mobile-banner-slot">
+            <ChapterwiseBanner onNavigate={() => router.push("/tests/chapterwise")} />
+          </div>
+
+          <div style={{ flex: 1, minWidth: 0 }}>
             {loading ? (
               <div style={{ display: "flex", justifyContent: "center", padding: 80 }}>
                 <div
@@ -302,13 +314,14 @@ function TestListing() {
                 </p>
 
                 <div
+                  className="subject-grid"
                   style={{
                     display: "grid",
                     gridTemplateColumns: "repeat(auto-fill, minmax(155px, 1fr))",
                     gap: 12,
                   }}
                 >
-                  {filteredSubjects.map(s => {
+                  {filteredSubjects.map((s) => {
                     const data = bySubject[s.name] || { free: [], paid: [] };
                     const total = data.free.length + data.paid.length;
 
@@ -418,7 +431,159 @@ function TestListing() {
         </div>
       </div>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        .mobile-banner-slot {
+          display: none;
+        }
+
+        @media (max-width: 768px) {
+          .tests-page-wrap {
+            padding: 28px 18px !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+          }
+
+          .stats-row {
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 10px !important;
+            margin-bottom: 24px !important;
+          }
+
+          .stats-card {
+            padding: 14px 10px !important;
+            min-height: 58px !important;
+            border-radius: 12px !important;
+            min-width: 0 !important;
+          }
+
+          .stats-card p:first-child {
+            font-size: 10px !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+          }
+
+          .stats-card p:last-child {
+            font-size: 21px !important;
+          }
+
+          .desktop-banner-slot {
+            display: none !important;
+          }
+
+          .mobile-banner-slot {
+            display: block !important;
+            width: 100% !important;
+          }
+
+          .tests-main-layout {
+            flex-direction: column !important;
+            gap: 0 !important;
+          }
+
+          .subject-sidebar {
+            width: 100% !important;
+          }
+
+          .subject-sidebar input {
+            height: 40px !important;
+            margin-bottom: 10px !important;
+          }
+
+          .subject-list {
+            flex-direction: row !important;
+            overflow-x: auto !important;
+            gap: 8px !important;
+            padding-bottom: 0 !important;
+            scrollbar-width: none !important;
+          }
+
+          .subject-list::-webkit-scrollbar {
+            display: none !important;
+          }
+
+          .subject-list button {
+            min-width: 164px !important;
+            justify-content: flex-start !important;
+            border-left: none !important;
+            border-bottom: 3px solid transparent !important;
+            background: #fff !important;
+          }
+
+          .chapter-banner {
+            margin-top: 26px !important;
+            margin-bottom: 26px !important;
+            padding: 20px 22px !important;
+            border-radius: 15px !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 18px !important;
+          }
+
+          .chapter-banner > div:first-child {
+            justify-content: flex-start !important;
+            align-items: center !important;
+          }
+
+          .chapter-banner-btn {
+            width: 100% !important;
+            text-align: center !important;
+            box-sizing: border-box !important;
+            padding: 11px 18px !important;
+          }
+
+          .subject-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .test-card {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+          }
+
+          .test-card-action {
+            width: 100% !important;
+            align-items: stretch !important;
+          }
+
+          .test-card-action button {
+            width: 100% !important;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .tests-page-wrap {
+            padding: 24px 14px !important;
+          }
+
+          .stats-row {
+            gap: 8px !important;
+          }
+
+          .stats-card {
+            padding: 12px 8px !important;
+          }
+
+          .stats-card p:first-child {
+            font-size: 9px !important;
+          }
+
+          .stats-card p:last-child {
+            font-size: 19px !important;
+          }
+
+          .subject-list button {
+            min-width: 150px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
@@ -442,7 +607,7 @@ function TestSection({ title, count, color, bg, tests, attemptMap, router }) {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {tests.map(test => (
+        {tests.map((test) => (
           <TestCard
             key={test._id}
             test={test}
@@ -460,6 +625,7 @@ function TestCard({ test, attempt, onStart }) {
 
   return (
     <div
+      className="test-card"
       style={{
         background: "#fff",
         borderRadius: 14,
@@ -487,7 +653,7 @@ function TestCard({ test, attempt, onStart }) {
         {isFree ? "🆓" : "⭐"}
       </div>
 
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, width: "100%" }}>
         <p
           style={{
             fontSize: 14,
@@ -539,7 +705,10 @@ function TestCard({ test, attempt, onStart }) {
         )}
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5 }}>
+      <div
+        className="test-card-action"
+        style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5 }}
+      >
         {!isFree && test.price > 0 && (
           <span style={{ fontSize: 13, fontWeight: 700, color: "#1e40af" }}>
             ₹{test.price}

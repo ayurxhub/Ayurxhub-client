@@ -11,6 +11,7 @@ const adminLinks = [
     { href: "/admin/experts", icon: "verified_user", label: "Experts", superOnly: false },
     { href: "/admin/materials", icon: "menu_book", label: "Materials", superOnly: false },
     { href: "/admin/tests", icon: "quiz", label: "Test Series", superOnly: false },
+    { href: "/admin/blogs", icon: "article", label: "Blog Posts", superOnly: false }, // ← ADD THIS
     { href: "/admin/admins", icon: "admin_panel_settings", label: "Admins", superOnly: true },
 ];
 

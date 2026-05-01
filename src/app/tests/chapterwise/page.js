@@ -209,7 +209,7 @@ function ChapterwiseTests() {
 }
 
 function TestRow({ test, attempt, onStart }) {
-    const isFree = test.type === "free";
+    const isFree = test.price === 0;
     return (
         <div style={{ background: "#fff", borderRadius: 12, padding: "14px 18px", border: `1px solid ${isFree ? "rgba(134,239,172,0.4)" : "rgba(147,197,253,0.4)"}`, display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, background: isFree ? "#dcfce7" : "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{isFree ? "🆓" : "⭐"}</div>

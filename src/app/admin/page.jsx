@@ -11,7 +11,8 @@ export default function AdminOverview() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        authAxios.get("/admin/stats")
+        authAxios
+            .get("/admin/stats")
             .then((res) => setStats(res.data.stats))
             .catch(console.error)
             .finally(() => setLoading(false));
@@ -20,93 +21,341 @@ export default function AdminOverview() {
     if (loading) return <Spinner />;
 
     const statCards = [
-        { label: "Total Students", value: stats.totalStudents, color: "#1D9E75" },
-        { label: "Total Experts", value: stats.totalExperts, color: "#185FA5" },
-        { label: "Total Bookings", value: stats.totalBookings, color: "#854F0B" },
-        { label: "Completed", value: stats.completedBookings, color: "#1D9E75" },
-        { label: "Cancelled", value: stats.cancelledBookings, color: "#A32D2D" },
-        { label: "Pending Verification", value: stats.pendingVerification, color: "#854F0B" },
-        { label: "Total Reviews", value: stats.totalReviews, color: "#185FA5" },
-        { label: "Total Revenue", value: `₹${stats.totalRevenue?.toLocaleString()}`, color: "#1D9E75" },
+        { label: "Total Students", value: stats.totalStudents, color: "#059669" },
+        { label: "Total Experts", value: stats.totalExperts, color: "#2563eb" },
+        { label: "Total Bookings", value: stats.totalBookings, color: "#d97706" },
+        { label: "Completed", value: stats.completedBookings, color: "#059669" },
+        { label: "Cancelled", value: stats.cancelledBookings, color: "#dc2626" },
+        { label: "Pending Verification", value: stats.pendingVerification, color: "#d97706" },
+        { label: "Total Reviews", value: stats.totalReviews, color: "#2563eb" },
+        {
+            label: "Total Revenue",
+            value: `₹${stats.totalRevenue?.toLocaleString()}`,
+            color: "#059669",
+        },
     ];
 
     return (
-        <div>
-            <div style={{ marginBottom: 28 }}>
-                <h1 style={{ fontSize: 20, fontWeight: 500, color: "#ffffff", marginBottom: 4 }}>Overview</h1>
-                <p style={{ fontSize: 13, color: "#4a5568" }}>Platform statistics and recent activity</p>
+        <div className="overview-page">
+            <div className="page-header">
+                <h1>Overview</h1>
+                <p>Platform statistics and recent activity</p>
             </div>
 
-            {/* Stat Cards */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 28 }}>
+            <div className="stats-grid">
                 {statCards.map(({ label, value, color }) => (
-                    <div key={label} style={{ background: "#161b27", border: "0.5px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "18px 20px" }}>
-                        <p style={{ fontSize: 11, color: "#4a5568", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>{label}</p>
-                        <p style={{ fontSize: 26, fontWeight: 500, color }}>{value}</p>
+                    <div className="stat-card" key={label}>
+                        <p className="stat-label">{label}</p>
+                        <p className="stat-value" style={{ color }}>
+                            {value}
+                        </p>
                     </div>
                 ))}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+            <div className="content-grid">
+                <Panel title="Recent users" onViewAll={() => router.push("/admin/users")}>
+                    {stats.recentUsers?.map((u) => (
+                        <div className="list-row" key={u._id}>
+                            <div className="avatar">
+                                {u.name
+                                    ?.split(" ")
+                                    .map((n) => n[0])
+                                    .join("")
+                                    .toUpperCase()
+                                    .slice(0, 2)}
+                            </div>
 
-                {/* Recent Users */}
-                <div style={{ background: "#161b27", border: "0.5px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: 20 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                        <p style={{ fontSize: 13, fontWeight: 500, color: "#ffffff" }}>Recent users</p>
-                        <button onClick={() => router.push("/admin/users")}
-                            style={{ fontSize: 12, color: "#1D9E75", background: "none", border: "none", cursor: "pointer" }}>
-                            View all
-                        </button>
-                    </div>
-                    {stats.recentUsers.map((u) => (
-                        <div key={u._id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "0.5px solid rgba(255,255,255,0.04)" }}>
-                            <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#1D9E75", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 500, color: "white", flexShrink: 0 }}>
-                                {u.name?.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
+                            <div className="row-main">
+                                <p className="row-title">{u.name}</p>
+                                <p className="row-subtitle">{u.email}</p>
                             </div>
-                            <div style={{ flex: 1 }}>
-                                <p style={{ fontSize: 13, color: "#ffffff", marginBottom: 1 }}>{u.name}</p>
-                                <p style={{ fontSize: 11, color: "#4a5568" }}>{u.email}</p>
-                            </div>
-                            <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, background: u.role === "expert" ? "rgba(24,95,165,0.2)" : "rgba(29,158,117,0.2)", color: u.role === "expert" ? "#5BA3E8" : "#1D9E75", textTransform: "capitalize" }}>
+
+                            <span className={`badge ${u.role === "expert" ? "expert" : "student"}`}>
                                 {u.role}
                             </span>
                         </div>
                     ))}
-                </div>
+                </Panel>
 
-                {/* Recent Bookings */}
-                <div style={{ background: "#161b27", border: "0.5px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: 20 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                        <p style={{ fontSize: 13, fontWeight: 500, color: "#ffffff" }}>Recent bookings</p>
-                        <button onClick={() => router.push("/admin/bookings")}
-                            style={{ fontSize: 12, color: "#1D9E75", background: "none", border: "none", cursor: "pointer" }}>
-                            View all
-                        </button>
-                    </div>
-                    {stats.recentBookings.map((b) => (
-                        <div key={b._id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "0.5px solid rgba(255,255,255,0.04)" }}>
-                            <div>
-                                <p style={{ fontSize: 13, color: "#ffffff", marginBottom: 1 }}>{b.student?.name} → {b.expert?.name}</p>
-                                <p style={{ fontSize: 11, color: "#4a5568" }}>
-                                    {new Date(b.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} · {b.startTime}
+                <Panel title="Recent bookings" onViewAll={() => router.push("/admin/bookings")}>
+                    {stats.recentBookings?.map((b) => (
+                        <div className="list-row booking-row" key={b._id}>
+                            <div className="row-main">
+                                <p className="row-title">
+                                    {b.student?.name} → {b.expert?.name}
+                                </p>
+                                <p className="row-subtitle">
+                                    {new Date(b.date).toLocaleDateString("en-IN", {
+                                        day: "numeric",
+                                        month: "short",
+                                    })}{" "}
+                                    · {b.startTime}
                                 </p>
                             </div>
-                            <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, background: "rgba(29,158,117,0.15)", color: "#1D9E75", textTransform: "capitalize" }}>
-                                {b.status}
-                            </span>
+
+                            <span className="badge student">{b.status}</span>
                         </div>
                     ))}
-                </div>
+                </Panel>
             </div>
+
+            <style jsx>{`
+        .overview-page {
+          width: 100%;
+          max-width: 100%;
+          min-height: 100vh;
+          overflow-x: hidden;
+          background: #f7f9fc;
+          color: #111827;
+        }
+
+        .page-header {
+          margin-bottom: 28px;
+        }
+
+        .page-header h1 {
+          font-size: 22px;
+          font-weight: 600;
+          color: #111827;
+          margin: 0 0 4px;
+        }
+
+        .page-header p {
+          font-size: 13px;
+          color: #6b7280;
+          margin: 0;
+        }
+
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 14px;
+          margin-bottom: 28px;
+        }
+
+        .stat-card,
+        .panel {
+          background: #ffffff;
+          border: 1px solid #e5e7eb;
+          border-radius: 14px;
+          box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+        }
+
+        .stat-card {
+          padding: 18px 20px;
+          min-width: 0;
+        }
+
+        .stat-label {
+          font-size: 11px;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          margin: 0 0 8px;
+        }
+
+        .stat-value {
+          font-size: 26px;
+          font-weight: 600;
+          margin: 0;
+          word-break: break-word;
+        }
+
+        .content-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 20px;
+        }
+
+        .panel {
+          padding: 20px;
+          min-width: 0;
+        }
+
+        .panel-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+
+        .panel-title {
+          font-size: 14px;
+          font-weight: 600;
+          color: #111827;
+          margin: 0;
+        }
+
+        .view-btn {
+          font-size: 12px;
+          color: #059669;
+          background: none;
+          border: none;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+
+        .list-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 11px 0;
+          border-bottom: 1px solid #f1f5f9;
+          min-width: 0;
+        }
+
+        .list-row:last-child {
+          border-bottom: none;
+        }
+
+        .booking-row {
+          justify-content: space-between;
+        }
+
+        .avatar {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: #10b981;
+          color: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          font-weight: 600;
+          flex-shrink: 0;
+        }
+
+        .row-main {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .row-title,
+        .row-subtitle {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .row-title {
+          font-size: 13px;
+          color: #111827;
+          margin: 0 0 2px;
+        }
+
+        .row-subtitle {
+          font-size: 11px;
+          color: #6b7280;
+          margin: 0;
+        }
+
+        .badge {
+          font-size: 10px;
+          padding: 4px 9px;
+          border-radius: 999px;
+          text-transform: capitalize;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+
+        .badge.student {
+          background: #d1fae5;
+          color: #047857;
+        }
+
+        .badge.expert {
+          background: #dbeafe;
+          color: #1d4ed8;
+        }
+
+        @media (max-width: 1100px) {
+          .stats-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+
+        @media (max-width: 768px) {
+          .content-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .page-header h1 {
+            font-size: 20px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .stats-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+          }
+
+          .stat-card,
+          .panel {
+            padding: 16px;
+          }
+
+          .stat-value {
+            font-size: 24px;
+          }
+
+          .badge {
+            max-width: 90px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+        }
+      `}</style>
+        </div>
+    );
+}
+
+function Panel({ title, onViewAll, children }) {
+    return (
+        <div className="panel">
+            <div className="panel-header">
+                <p className="panel-title">{title}</p>
+                <button onClick={onViewAll} className="view-btn">
+                    View all
+                </button>
+            </div>
+            {children}
         </div>
     );
 }
 
 function Spinner() {
     return (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "60vh" }}>
-            <div style={{ width: 32, height: 32, borderRadius: "50%", border: "3px solid #1D9E75", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <div className="spinner-wrap">
+            <div className="spinner" />
+
+            <style jsx>{`
+        .spinner-wrap {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 60vh;
+          background: #f7f9fc;
+        }
+
+        .spinner {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          border: 3px solid #10b981;
+          border-top-color: transparent;
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
         </div>
     );
 }
