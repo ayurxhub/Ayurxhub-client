@@ -128,10 +128,10 @@ export default function AdminTestsPage() {
         <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
                 <div>
-                    <h1 style={{ fontSize: 20, fontWeight: 500, color: "#ffffff", margin: "0 0 4px" }}>
+                    <h1 style={{ fontSize: 20, fontWeight: 500, color: "#111827", margin: "0 0 4px" }}>
                         Test Series
                     </h1>
-                    <p style={{ fontSize: 13, color: "#4a5568", margin: 0 }}>
+                    <p style={{ fontSize: 13, color: "#6b7280", margin: 0 }}>
                         Manage tests and question bank
                     </p>
                 </div>
@@ -164,7 +164,7 @@ export default function AdminTestsPage() {
                 </div>
             </div>
 
-            <div style={{ display: "flex", gap: 4, background: "#161b27", borderRadius: 10, padding: 4, width: "fit-content", marginBottom: 20 }}>
+            <div style={{ display: "flex", gap: 4, background: "#fff", borderRadius: 10, padding: 4, width: "fit-content", marginBottom: 20 }}>
                 {["tests", "questions"].map(t => (
                     <button
                         key={t}
@@ -303,7 +303,7 @@ export default function AdminTestsPage() {
 
 function TestsList({ tests, togglePublish, deleteTest, editTest }) {
     if (tests.length === 0) {
-        return <p style={{ color: "#4a5568", textAlign: "center", padding: 40 }}>No tests yet. Create one above.</p>;
+        return <p style={{ color: "#6b7280", textAlign: "center", padding: 40 }}>No tests yet. Create one above.</p>;
     }
 
     return (
@@ -325,7 +325,7 @@ function TestsList({ tests, togglePublish, deleteTest, editTest }) {
                     </div>
 
                     <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: 14, fontWeight: 500, color: "#fff", margin: "0 0 3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", margin: "0 0 3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {test.title}
                         </p>
 
@@ -371,16 +371,16 @@ function TestsList({ tests, togglePublish, deleteTest, editTest }) {
 
 function QuestionsList({ questions, approveQ, deleteQ, editQ }) {
     if (questions.length === 0) {
-        return <p style={{ color: "#4a5568", textAlign: "center", padding: 40 }}>No questions found.</p>;
+        return <p style={{ color: "#6b7280", textAlign: "center", padding: 40 }}>No questions found.</p>;
     }
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {questions.map((q, i) => (
-                <div key={q._id} style={{ background: "#161b27", border: "0.5px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "14px 18px" }}>
+                <div key={q._id} style={{ background: "#fff", border: "0.5px solid rgba(0,0,0,0.06)", borderRadius: 10, padding: "14px 18px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                         <div style={{ flex: 1 }}>
-                            <p style={{ fontSize: 13, color: "#fff", margin: "0 0 6px", lineHeight: 1.5 }}>
+                            <p style={{ fontSize: 13, color: "#111827", margin: "0 0 6px", lineHeight: 1.5 }}>
                                 {i + 1}. {q.text}
                             </p>
 
@@ -426,7 +426,7 @@ function QuestionsList({ questions, approveQ, deleteQ, editQ }) {
                                     {q.isApproved ? "✓ Approved" : "⏳ Pending"}
                                 </span>
 
-                                <span style={{ fontSize: 10, color: "#4a5568" }}>
+                                <span style={{ fontSize: 10, color: "#6b7280" }}>
                                     by {q.createdBy?.name || "Admin"}
                                 </span>
                             </div>
@@ -434,7 +434,7 @@ function QuestionsList({ questions, approveQ, deleteQ, editQ }) {
 
                         <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                             {!q.isApproved && (
-                                <button onClick={() => approveQ(q._id)} style={{ ...miniBtn, background: "#1D9E75", color: "#fff", border: "none" }}>
+                                <button onClick={() => approveQ(q._id)} style={{ ...miniBtn, background: "#1D9E75", color: "#111827", border: "none" }}>
                                     Approve
                                 </button>
                             )}
@@ -521,7 +521,7 @@ function SubjectFormModal({ authAxios, onClose, onSaved }) {
                         style={inp}
                         placeholder="Term 1, Term 2"
                     />
-                    <p style={{ fontSize: 11, color: "#4a5568", margin: "4px 0 0" }}>
+                    <p style={{ fontSize: 11, color: "#6b7280", margin: "4px 0 0" }}>
                         Comma-separated terms
                     </p>
                 </Field>
@@ -536,7 +536,7 @@ function SubjectFormModal({ authAxios, onClose, onSaved }) {
 Term 1 | Chapter 2 - Hetu
 Term 2 | Chapter 3 - Samprapti`}
                     />
-                    <p style={{ fontSize: 11, color: "#4a5568", margin: "4px 0 0" }}>
+                    <p style={{ fontSize: 11, color: "#6b7280", margin: "4px 0 0" }}>
                         One chapter per line. Format: Term | Chapter Name
                     </p>
                 </Field>
@@ -796,10 +796,10 @@ function BulkUploadModal({ authAxios, onClose, onSaved }) {
                             <div
                                 key={qi}
                                 style={{
-                                    background: "#0f1117",
+                                    background: "#f8fafc",
                                     borderRadius: 12,
                                     padding: 14,
-                                    border: "0.5px solid rgba(255,255,255,0.08)",
+                                    border: "0.5px solid rgba(0,0,0,0.08)",
                                 }}
                             >
                                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
@@ -1140,7 +1140,7 @@ function TestFormModal({ authAxios, editing, onClose, onSaved }) {
                 </div>
 
                 {!editing && (
-                    <div style={{ background: "#0f1117", padding: 14, borderRadius: 10, border: "0.5px solid rgba(255,255,255,0.08)" }}>
+                    <div style={{ background: "#f8fafc", padding: 14, borderRadius: 10, border: "0.5px solid rgba(0,0,0,0.08)" }}>
                         <label style={lbl}>Question Source</label>
 
                         <div style={{ display: "flex", gap: 14, marginBottom: 12 }}>
@@ -1174,7 +1174,7 @@ function TestFormModal({ authAxios, editing, onClose, onSaved }) {
                                     onChange={e => setQuestionCount(Number(e.target.value))}
                                     style={inp}
                                 />
-                                <p style={{ fontSize: 11, color: "#4a5568", margin: "4px 0 0" }}>
+                                <p style={{ fontSize: 11, color: "#6b7280", margin: "4px 0 0" }}>
                                     Backend will pick approved questions from selected subject/chapter.
                                 </p>
                             </Field>
@@ -1215,10 +1215,10 @@ function TestFormModal({ authAxios, editing, onClose, onSaved }) {
                             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
                                 {previewQuestions.map((q, qi) => (
                                     <div key={qi} style={{
-                                        background: "#0f1117",
+                                        background: "#f8fafc",
                                         borderRadius: 10,
                                         padding: 12,
-                                        border: "0.5px solid rgba(255,255,255,0.08)"
+                                        border: "0.5px solid rgba(0,0,0,0.08)"
                                     }}>
                                         <label style={lbl}>Question {qi + 1}</label>
 
@@ -1464,9 +1464,9 @@ function QuestionFormModal({ authAxios, editing, onClose, onSaved }) {
 function ModalShell({ title, children, onClose, maxWidth = 560 }) {
     return (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20 }}>
-            <div style={{ background: "#161b27", borderRadius: 16, padding: 28, width: "100%", maxWidth, border: "0.5px solid rgba(255,255,255,0.1)", maxHeight: "90vh", overflowY: "auto" }}>
+            <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: "100%", maxWidth, border: "0.5px solid rgba(0,0,0,0.1)", maxHeight: "90vh", overflowY: "auto" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 20 }}>
-                    <h2 style={{ fontSize: 16, fontWeight: 600, color: "#fff", margin: 0 }}>
+                    <h2 style={{ fontSize: 16, fontWeight: 600, color: "#111827", margin: 0 }}>
                         {title}
                     </h2>
 
@@ -1504,9 +1504,9 @@ const inp = {
     width: "100%",
     padding: "9px 12px",
     borderRadius: 8,
-    border: "0.5px solid rgba(255,255,255,0.1)",
-    background: "#0f1117",
-    color: "#fff",
+    border: "0.5px solid rgba(0,0,0,0.1)",
+    background: "#f8fafc",
+    color: "#111827",
     fontSize: 13,
     outline: "none",
     boxSizing: "border-box",
@@ -1518,7 +1518,7 @@ const primaryBtn = {
     borderRadius: 10,
     border: "none",
     background: "#1D9E75",
-    color: "#fff",
+    color: "#111827",
     fontSize: 13,
     fontWeight: 600,
     cursor: "pointer",
@@ -1528,9 +1528,9 @@ const primaryBtn = {
 const secondaryBtn = {
     padding: "9px 20px",
     borderRadius: 10,
-    border: "0.5px solid rgba(255,255,255,0.1)",
-    background: "#161b27",
-    color: "#fff",
+    border: "0.5px solid rgba(0,0,0,0.1)",
+    background: "#fff",
+    color: "#111827",
     fontSize: 13,
     fontWeight: 600,
     cursor: "pointer",
@@ -1541,7 +1541,7 @@ const cancelBtn = {
     flex: 1,
     padding: "10px",
     borderRadius: 8,
-    border: "0.5px solid rgba(255,255,255,0.1)",
+    border: "0.5px solid rgba(0,0,0,0.1)",
     background: "transparent",
     color: "#9ca3af",
     cursor: "pointer",
@@ -1551,7 +1551,7 @@ const cancelBtn = {
 const miniBtn = {
     padding: "5px 10px",
     borderRadius: 6,
-    border: "0.5px solid rgba(255,255,255,0.1)",
+    border: "0.5px solid rgba(0,0,0,0.1)",
     background: "transparent",
     color: "#9ca3af",
     fontSize: 11,
@@ -1573,9 +1573,9 @@ const dangerMiniBtn = {
 const smallSelect = {
     padding: "7px 12px",
     borderRadius: 8,
-    border: "0.5px solid rgba(255,255,255,0.1)",
-    background: "#161b27",
-    color: "#fff",
+    border: "0.5px solid rgba(0,0,0,0.1)",
+    background: "#fff",
+    color: "#111827",
     fontSize: 12,
     fontFamily: "inherit",
     cursor: "pointer",
@@ -1586,15 +1586,15 @@ const filterBtn = {
     borderRadius: 8,
     border: "none",
     background: "#1D9E75",
-    color: "#fff",
+    color: "#111827",
     fontSize: 12,
     cursor: "pointer",
     fontFamily: "inherit",
 };
 
 const cardRow = {
-    background: "#161b27",
-    border: "0.5px solid rgba(255,255,255,0.06)",
+    background: "#fff",
+    border: "0.5px solid rgba(0,0,0,0.06)",
     borderRadius: 12,
     padding: "16px 20px",
     display: "flex",
@@ -1604,7 +1604,7 @@ const cardRow = {
 
 const mutedText = {
     fontSize: 11,
-    color: "#4a5568",
+    color: "#6b7280",
 };
 
 const pillGreen = {
@@ -1619,6 +1619,6 @@ const pillDark = {
     fontSize: 10,
     padding: "2px 8px",
     borderRadius: 20,
-    background: "rgba(255,255,255,0.06)",
+    background: "rgba(0,0,0,0.06)",
     color: "#9ca3af",
 };

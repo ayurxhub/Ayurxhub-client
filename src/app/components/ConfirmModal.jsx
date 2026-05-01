@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 export function ConfirmModal({ message, onConfirm, onCancel }) {
     return (
         <div style={{

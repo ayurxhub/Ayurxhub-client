@@ -75,14 +75,14 @@ export default function ClientLayout({
             ) : (
                 <>
                     <div className="mobile-drawer-only">
-                        <Sidebar
+                        {!isAdmin && <Sidebar
                             collapsed={collapsed}
                             setCollapsed={setCollapsed}
                             mobileOpen={mobileOpen}
                             setMobileOpen={setMobileOpen}
-                        />
+                        />}
                     </div>
-                    <Navbar onMenuClick={() => setMobileOpen(true)} />
+                    {!isAdmin && <Navbar onMenuClick={() => setMobileOpen(true)} />}
                     <main>{children}</main>
                     <style jsx>{`
                         .mobile-drawer-only {

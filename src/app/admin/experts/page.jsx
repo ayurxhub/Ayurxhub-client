@@ -4,12 +4,12 @@ import { useAuth } from "../../context/AuthContext";
 
 const STATUS_FILTERS = ["pending", "approved", "rejected", "suspended", "all"];
 
-const statusStyle = {
-    pending: { bg: "rgba(133,79,11,0.2)", color: "#EF9F27" },
-    approved: { bg: "rgba(29,158,117,0.2)", color: "#1D9E75" },
-    rejected: { bg: "rgba(220,38,38,0.15)", color: "#f87171" },
-    suspended: { bg: "rgba(100,100,100,0.2)", color: "#9ca3af" },
-    none: { bg: "rgba(100,100,100,0.1)", color: "#6b7280" },
+const STATUS = {
+    pending: { bg: "#fef3c7", color: "#92400e" },
+    approved: { bg: "#d1fae5", color: "#065f46" },
+    rejected: { bg: "#fee2e2", color: "#991b1b" },
+    suspended: { bg: "#f3f4f6", color: "#374151" },
+    none: { bg: "#f3f4f6", color: "#6b7280" },
 };
 
 export default function AdminExperts() {
@@ -19,313 +19,190 @@ export default function AdminExperts() {
     const [filter, setFilter] = useState("pending");
     const [selected, setSelected] = useState(null);
     const [rejectReason, setRejectReason] = useState("");
-    const [showRejectInput, setShowRejectInput] = useState(false);
+    const [showReject, setShowReject] = useState(false);
     const [notes, setNotes] = useState("");
     const [notesSaved, setNotesSaved] = useState(false);
-    const [actionError, setActionError] = useState("");
-
+    const [error, setError] = useState("");
 
     useEffect(() => { fetchExperts(); }, [filter]);
-    useEffect(() => {
-        if (selected) {
-            setNotes(selected.adminNotes || "");
-            setShowRejectInput(false);
-            setRejectReason("");
-        }
-    }, [selected]);
+    useEffect(() => { if (selected) { setNotes(selected.adminNotes || ""); setShowReject(false); setRejectReason(""); } }, [selected]);
 
     const fetchExperts = async () => {
         setLoading(true);
         try {
             const res = await authAxios.get(`/admin/users?role=expert&verificationStatus=${filter}`);
-            setExperts(res.data.users);
-            setSelected(null);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
+            setExperts(res.data.users); setSelected(null);
+        } catch (err) { console.error(err); }
+        finally { setLoading(false); }
     };
 
     const updateStatus = async (id, status, reason = "") => {
-        try {
-            await authAxios.put(`/admin/users/${id}/status`, { status, rejectionReason: reason });
-            setShowRejectInput(false);
-            setRejectReason("");
-            fetchExperts();
-        } catch (err) {
-            setActionError(err.response?.data?.message || "Failed");
-        }
+        try { await authAxios.put(`/admin/users/${id}/status`, { status, rejectionReason: reason }); setShowReject(false); setRejectReason(""); fetchExperts(); }
+        catch (err) { setError(err.response?.data?.message || "Failed"); }
     };
 
     const saveNotes = async () => {
-        try {
-            await authAxios.put(`/admin/users/${selected._id}/notes`, { notes });
-            setNotesSaved(true);
-            setTimeout(() => setNotesSaved(false), 2000);
-        } catch (err) {
-            setActionError("Failed to save notes");
-        }
+        try { await authAxios.put(`/admin/users/${selected._id}/notes`, { notes }); setNotesSaved(true); setTimeout(() => setNotesSaved(false), 2000); }
+        catch { setError("Failed to save notes"); }
     };
 
-    const initials = (name) =>
-        name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
-
-    const docViewUrl = (url) =>
-        url.includes("/raw/upload/")
-            ? `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`
-            : url;
+    const initials = name => name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
 
     return (
+        <div>
+            <div style={{ marginBottom: 20 }}>
+                <h1 style={{ fontSize: 20, fontWeight: 700, color: "#111827", margin: "0 0 4px" }}>Expert Verification</h1>
+                <p style={{ fontSize: 13, color: "#6b7280", margin: 0 }}>Review credentials and manage expert status</p>
+            </div>
 
+            {error && <div style={{ padding: "10px 14px", borderRadius: 8, marginBottom: 16, background: "#fee2e2", color: "#991b1b", fontSize: 13 }}>{error}</div>}
 
-        <div style={{ display: "grid", gridTemplateColumns: selected ? "340px 1fr" : "1fr", gap: 16, alignItems: "start" }}>
+            <div style={{ display: "flex", gap: 2, marginBottom: 16, borderBottom: "1px solid #e5e7eb", flexWrap: "wrap" }}>
+                {STATUS_FILTERS.map(f => (
+                    <button key={f} onClick={() => setFilter(f)} style={{ padding: "8px 14px", fontSize: 12, background: "none", border: "none", borderBottom: filter === f ? "2px solid #1D9E75" : "2px solid transparent", color: filter === f ? "#1D9E75" : "#6b7280", cursor: "pointer", textTransform: "capitalize", fontFamily: "inherit", fontWeight: filter === f ? 700 : 400 }}>{f}</button>
+                ))}
+            </div>
 
-
-            {actionError && (
-                <div style={{ padding: "10px 14px", borderRadius: 8, marginBottom: 16, background: "rgba(226,75,74,0.15)", color: "#E24B4A", fontSize: 13 }}>
-                    {actionError}
-                </div>
-            )}
-
-            {/* ── Left: expert list ── */}
-            <div>
-                <div style={{ marginBottom: 20 }}>
-                    <h1 style={{ fontSize: 20, fontWeight: 500, color: "#fff", marginBottom: 4 }}>Expert Verification</h1>
-                    <p style={{ fontSize: 13, color: "#4a5568" }}>Review credentials and manage expert status</p>
-                </div>
-
-                <div style={{ display: "flex", gap: 4, marginBottom: 16, borderBottom: "0.5px solid rgba(255,255,255,0.06)" }}>
-                    {STATUS_FILTERS.map(f => (
-                        <button key={f} onClick={() => setFilter(f)} style={{
-                            padding: "8px 14px", fontSize: 12, background: "none", border: "none",
-                            borderBottom: filter === f ? "2px solid #1D9E75" : "2px solid transparent",
-                            color: filter === f ? "#1D9E75" : "#4a5568",
-                            cursor: "pointer", textTransform: "capitalize", fontFamily: "inherit",
-                        }}>{f}</button>
-                    ))}
-                </div>
-
-                {loading ? <p style={{ color: "#4a5568", fontSize: 13 }}>Loading...</p> :
-                    experts.length === 0 ? <p style={{ color: "#4a5568", fontSize: 13 }}>No experts found</p> :
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            {experts.map(expert => {
-                                const st = statusStyle[expert.verificationStatus] || statusStyle.none;
-                                const isActive = selected?._id === expert._id;
+            <div className="exp-layout">
+                {/* Expert list */}
+                <div className="exp-list">
+                    {loading ? <p style={{ color: "#6b7280", fontSize: 13 }}>Loading...</p>
+                        : experts.length === 0 ? <p style={{ color: "#9ca3af", fontSize: 13 }}>No experts found</p>
+                            : experts.map(e => {
+                                const st = STATUS[e.verificationStatus] || STATUS.none;
+                                const isActive = selected?._id === e._id;
                                 return (
-                                    <div key={expert._id}
-                                        onClick={() => setSelected(isActive ? null : expert)}
-                                        style={{
-                                            background: isActive ? "#1a2035" : "#161b27",
-                                            border: `0.5px solid ${isActive ? "rgba(29,158,117,0.4)" : "rgba(255,255,255,0.06)"}`,
-                                            borderRadius: 10, padding: "14px 16px", cursor: "pointer",
-                                            display: "flex", alignItems: "center", gap: 12,
-                                        }}
-                                    >
-                                        <div style={{
-                                            width: 38, height: 38, borderRadius: "50%", background: "#1D9E75",
-                                            display: "flex", alignItems: "center", justifyContent: "center",
-                                            fontSize: 13, fontWeight: 500, color: "#fff", flexShrink: 0,
-                                        }}>{initials(expert.name)}</div>
+                                    <div key={e._id} onClick={() => setSelected(isActive ? null : e)}
+                                        style={{ background: isActive ? "#eff6ff" : "#fff", border: `1px solid ${isActive ? "#93c5fd" : "#e5e7eb"}`, borderRadius: 10, padding: "12px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, marginBottom: 8, transition: "all 0.15s" }}>
+                                        <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#1D9E75", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff", flexShrink: 0 }}>{initials(e.name)}</div>
                                         <div style={{ flex: 1, minWidth: 0 }}>
-                                            <p style={{ fontSize: 13, fontWeight: 500, color: "#fff", marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{expert.name}</p>
-                                            <p style={{ fontSize: 11, color: "#4a5568", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{expert.email}</p>
+                                            <p style={{ fontSize: 13, fontWeight: 600, color: "#111827", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.name}</p>
+                                            <p style={{ fontSize: 11, color: "#9ca3af", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.email}</p>
                                         </div>
-                                        <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, background: st.bg, color: st.color, fontWeight: 600, flexShrink: 0, textTransform: "capitalize" }}>
-                                            {expert.verificationStatus || "none"}
-                                        </span>
+                                        <span style={{ fontSize: 10, padding: "3px 8px", borderRadius: 20, background: st.bg, color: st.color, fontWeight: 700, flexShrink: 0, textTransform: "capitalize" }}>{e.verificationStatus || "none"}</span>
                                     </div>
                                 );
                             })}
-                        </div>
-                }
-            </div>
+                </div>
 
-            {/* ── Right: detail panel ── */}
-            {selected && (() => {
-                const st = statusStyle[selected.verificationStatus] || statusStyle.none;
-                return (
-                    <div style={{ background: "#161b27", border: "0.5px solid rgba(255,255,255,0.06)", borderRadius: 14, padding: 24 }}>
-
-                        {/* Header */}
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-                            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                                <div style={{
-                                    width: 48, height: 48, borderRadius: "50%", background: "#1D9E75",
-                                    display: "flex", alignItems: "center", justifyContent: "center",
-                                    fontSize: 16, fontWeight: 500, color: "#fff", flexShrink: 0,
-                                }}>{initials(selected.name)}</div>
-                                <div>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-                                        <p style={{ fontSize: 15, fontWeight: 500, color: "#fff" }}>{selected.name}</p>
-                                        <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, background: st.bg, color: st.color, fontWeight: 600, textTransform: "capitalize" }}>
-                                            {selected.verificationStatus || "none"}
-                                        </span>
+                {/* Detail panel */}
+                {selected && (() => {
+                    const st = STATUS[selected.verificationStatus] || STATUS.none;
+                    return (
+                        <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14, padding: "clamp(16px,4vw,24px)" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+                                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                                    <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#1D9E75", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: "#fff", flexShrink: 0 }}>{initials(selected.name)}</div>
+                                    <div>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3, flexWrap: "wrap" }}>
+                                            <p style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>{selected.name}</p>
+                                            <span style={{ fontSize: 10, padding: "3px 8px", borderRadius: 20, background: st.bg, color: st.color, fontWeight: 700, textTransform: "capitalize" }}>{selected.verificationStatus || "none"}</span>
+                                        </div>
+                                        <p style={{ fontSize: 12, color: "#9ca3af", margin: 0 }}>{selected.email} · {selected.officialId}</p>
                                     </div>
-                                    <p style={{ fontSize: 12, color: "#4a5568" }}>{selected.email} · {selected.officialId}</p>
                                 </div>
-                            </div>
-                            <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: "#4a5568", fontSize: 20, cursor: "pointer" }}>×</button>
-                        </div>
-
-                        {/* Stats */}
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 20 }}>
-                            {[
-                                ["Experience", `${selected.experience || 0} yrs`],
-                                ["Fee", `₹${selected.consultationFee || 0}`],
-                                ["Languages", selected.languages?.join(", ") || "—"],
-                                ["Submitted", new Date(selected.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })],
-                            ].map(([label, val]) => (
-                                <div key={label} style={{ background: "#0d1117", borderRadius: 8, padding: "10px 12px" }}>
-                                    <p style={{ fontSize: 10, color: "#4a5568", marginBottom: 4 }}>{label}</p>
-                                    <p style={{ fontSize: 13, fontWeight: 500, color: "#fff" }}>{val}</p>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Qualifications + Specializations */}
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-
-                            <div style={{ background: "#0d1117", borderRadius: 10, padding: 14 }}>
-                                <p style={{ fontSize: 10, color: "#4a5568", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Qualifications</p>
-                                {selected.qualifications?.length > 0 ? selected.qualifications.map((q, i) => (
-                                    <div key={i} style={{ borderLeft: "2px solid #185FA5", paddingLeft: 10, marginBottom: 8 }}>
-                                        <p style={{ fontSize: 12, fontWeight: 500, color: "#fff" }}>{q.degree}</p>
-                                        <p style={{ fontSize: 11, color: "#4a5568" }}>{q.institution}{q.year ? ` · ${q.year}` : ""}</p>
-                                    </div>
-                                )) : <p style={{ fontSize: 12, color: "#4a5568" }}>Not provided</p>}
+                                <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#9ca3af", flexShrink: 0 }}>×</button>
                             </div>
 
-                            <div style={{ background: "#0d1117", borderRadius: 10, padding: 14 }}>
-                                <p style={{ fontSize: 10, color: "#4a5568", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Specializations</p>
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
-                                    {selected.specializations?.map(s => (
-                                        <span key={s} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, background: "rgba(24,95,165,0.2)", color: "#5BA3E8" }}>{s}</span>
-                                    ))}
+                            {/* Stats */}
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(100px,1fr))", gap: 8, marginBottom: 20 }}>
+                                {[["Experience", `${selected.experience || 0} yrs`], ["Fee", `₹${selected.consultationFee || 0}`], ["Languages", selected.languages?.join(", ") || "—"], ["Submitted", new Date(selected.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })]].map(([l, v]) => (
+                                    <div key={l} style={{ background: "#f8fafc", borderRadius: 8, padding: "10px 12px" }}>
+                                        <p style={{ fontSize: 10, color: "#9ca3af", margin: "0 0 4px", textTransform: "uppercase", letterSpacing: "0.04em" }}>{l}</p>
+                                        <p style={{ fontSize: 13, fontWeight: 600, color: "#111827", margin: 0 }}>{v}</p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Qualifications */}
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+                                <div style={{ background: "#f8fafc", borderRadius: 10, padding: 14 }}>
+                                    <p style={{ fontSize: 10, color: "#9ca3af", margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Qualifications</p>
+                                    {selected.qualifications?.length > 0 ? selected.qualifications.map((q, i) => (
+                                        <div key={i} style={{ borderLeft: "2px solid #3b82f6", paddingLeft: 10, marginBottom: 8 }}>
+                                            <p style={{ fontSize: 12, fontWeight: 600, color: "#111827", margin: 0 }}>{q.degree}</p>
+                                            <p style={{ fontSize: 11, color: "#9ca3af", margin: 0 }}>{q.institution}{q.year ? ` · ${q.year}` : ""}</p>
+                                        </div>
+                                    )) : <p style={{ fontSize: 12, color: "#9ca3af" }}>Not provided</p>}
                                 </div>
-                                {selected.subSpecializations?.length > 0 && (<>
-                                    <p style={{ fontSize: 10, color: "#4a5568", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Sub-specialties</p>
+                                <div style={{ background: "#f8fafc", borderRadius: 10, padding: 14 }}>
+                                    <p style={{ fontSize: 10, color: "#9ca3af", margin: "0 0 8px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Specializations</p>
                                     <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                                        {selected.subSpecializations.map(s => (
-                                            <span key={s} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, background: "rgba(100,100,100,0.15)", color: "#9ca3af" }}>{s}</span>
+                                        {selected.specializations?.map(s => (
+                                            <span key={s} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, background: "#dbeafe", color: "#1d4ed8" }}>{s}</span>
                                         ))}
                                     </div>
-                                </>)}
+                                </div>
                             </div>
-                        </div>
 
-                        {/* Bio */}
-                        {selected.bio && (
-                            <div style={{ background: "#0d1117", borderRadius: 10, padding: 14, marginBottom: 16 }}>
-                                <p style={{ fontSize: 10, color: "#4a5568", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Bio</p>
-                                <p style={{ fontSize: 12, color: "#9ca3af", lineHeight: 1.6 }}>{selected.bio}</p>
-                            </div>
-                        )}
-
-                        {/* Documents */}
-                        {selected.verificationDocuments?.length > 0 && (
-                            <div style={{ background: "#0d1117", borderRadius: 10, padding: 14, marginBottom: 16 }}>
-                                <p style={{ fontSize: 10, color: "#4a5568", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Verification documents</p>
-                                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {/* Documents */}
+                            {selected.verificationDocuments?.length > 0 && (
+                                <div style={{ background: "#f8fafc", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                                    <p style={{ fontSize: 10, color: "#9ca3af", margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Verification Documents</p>
                                     {selected.verificationDocuments.map(doc => (
-                                        <div key={doc.type} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#161b27", borderRadius: 8 }}>
+                                        <div key={doc.type} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#fff", borderRadius: 8, marginBottom: 6, border: "1px solid #e5e7eb" }}>
                                             <div>
-                                                <p style={{ fontSize: 12, fontWeight: 500, color: "#fff", textTransform: "capitalize", marginBottom: 2 }}>
-                                                    {doc.type.replace("_", " ")}
-                                                </p>
-                                                <p style={{ fontSize: 10, color: "#4a5568" }}>
-                                                    {new Date(doc.uploadedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                                                </p>
+                                                <p style={{ fontSize: 12, fontWeight: 600, color: "#111827", margin: 0, textTransform: "capitalize" }}>{doc.type.replace("_", " ")}</p>
+                                                <p style={{ fontSize: 10, color: "#9ca3af", margin: 0 }}>{new Date(doc.uploadedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
                                             </div>
-                                            <a href={docViewUrl(doc.url)} target="_blank" rel="noreferrer"
-                                                style={{ fontSize: 11, padding: "5px 12px", borderRadius: 6, background: "rgba(24,95,165,0.2)", color: "#5BA3E8", textDecoration: "none", fontWeight: 600 }}>
-                                                View →
-                                            </a>
+                                            <a href={doc.url} target="_blank" rel="noreferrer" style={{ fontSize: 11, padding: "5px 12px", borderRadius: 6, background: "#dbeafe", color: "#1d4ed8", textDecoration: "none", fontWeight: 600 }}>View →</a>
                                         </div>
                                     ))}
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {/* Rejection reason display */}
-                        {selected.rejectionReason && (
-                            <div style={{ padding: "10px 14px", background: "rgba(220,38,38,0.08)", borderRadius: 8, marginBottom: 16 }}>
-                                <p style={{ fontSize: 11, color: "#f87171" }}>Rejection reason: {selected.rejectionReason}</p>
-                            </div>
-                        )}
+                            {selected.rejectionReason && (
+                                <div style={{ padding: "10px 14px", background: "#fee2e2", borderRadius: 8, marginBottom: 16 }}>
+                                    <p style={{ fontSize: 11, color: "#991b1b", margin: 0 }}>Rejection reason: {selected.rejectionReason}</p>
+                                </div>
+                            )}
 
-                        {/* Admin notes */}
-                        <div style={{ background: "#0d1117", borderRadius: 10, padding: 14, marginBottom: 16 }}>
-                            <p style={{ fontSize: 10, color: "#4a5568", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Admin notes (internal)</p>
-                            <textarea
-                                value={notes}
-                                onChange={e => setNotes(e.target.value)}
-                                placeholder="Add internal notes — not visible to the expert..."
-                                rows={3}
-                                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, background: "#161b27", border: "0.5px solid rgba(255,255,255,0.08)", color: "#fff", fontSize: 12, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }}
-                            />
-                            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
-                                <button onClick={saveNotes} style={{
-                                    padding: "6px 16px", borderRadius: 8, fontSize: 12,
-                                    background: notesSaved ? "#1D9E75" : "rgba(255,255,255,0.08)",
-                                    color: notesSaved ? "#fff" : "#9ca3af",
-                                    border: "none", cursor: "pointer",
-                                }}>
-                                    {notesSaved ? "Saved ✓" : "Save note"}
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Action buttons */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                            {selected.verificationStatus === "pending" && (<>
-                                <button onClick={() => updateStatus(selected._id, "approved")}
-                                    style={{ padding: "11px", borderRadius: 10, background: "#1D9E75", color: "#fff", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                                    ✓ Approve Expert
-                                </button>
-                                {!showRejectInput ? (
-                                    <button onClick={() => setShowRejectInput(true)}
-                                        style={{ padding: "11px", borderRadius: 10, background: "rgba(220,38,38,0.15)", color: "#f87171", border: "1px solid rgba(220,38,38,0.3)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                                        ✕ Reject
+                            {/* Admin notes */}
+                            <div style={{ background: "#f8fafc", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                                <p style={{ fontSize: 10, color: "#9ca3af", margin: "0 0 8px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Admin Notes (internal)</p>
+                                <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Internal notes, not visible to expert..." rows={3}
+                                    style={{ width: "100%", padding: "8px 10px", borderRadius: 8, background: "#fff", border: "1px solid #e5e7eb", color: "#111827", fontSize: 12, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }} />
+                                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+                                    <button onClick={saveNotes} style={{ padding: "6px 16px", borderRadius: 8, fontSize: 12, background: notesSaved ? "#1D9E75" : "#f3f4f6", color: notesSaved ? "#fff" : "#374151", border: "none", cursor: "pointer", fontWeight: 600 }}>
+                                        {notesSaved ? "Saved ✓" : "Save note"}
                                     </button>
-                                ) : (
-                                    <div>
-                                        <textarea
-                                            value={rejectReason}
-                                            onChange={e => setRejectReason(e.target.value)}
-                                            placeholder="Reason for rejection (shown to expert)..."
-                                            rows={3}
-                                            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "#0d1117", border: "0.5px solid rgba(255,255,255,0.1)", color: "#fff", fontSize: 12, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box", marginBottom: 8 }}
-                                        />
-                                        <div style={{ display: "flex", gap: 8 }}>
-                                            <button onClick={() => setShowRejectInput(false)}
-                                                style={{ flex: 1, padding: "9px", borderRadius: 8, background: "rgba(255,255,255,0.05)", color: "#9ca3af", border: "none", fontSize: 12, cursor: "pointer" }}>
-                                                Cancel
-                                            </button>
-                                            <button onClick={() => updateStatus(selected._id, "rejected", rejectReason)}
-                                                style={{ flex: 1, padding: "9px", borderRadius: 8, background: "rgba(220,38,38,0.8)", color: "#fff", border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                                                Confirm Reject
-                                            </button>
+                                </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                {selected.verificationStatus === "pending" && (<>
+                                    <button onClick={() => updateStatus(selected._id, "approved")} style={{ padding: 11, borderRadius: 10, background: "#1D9E75", color: "#fff", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>✓ Approve Expert</button>
+                                    {!showReject ? (
+                                        <button onClick={() => setShowReject(true)} style={{ padding: 11, borderRadius: 10, background: "#fee2e2", color: "#991b1b", border: "1px solid #fecaca", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>✕ Reject</button>
+                                    ) : (
+                                        <div>
+                                            <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="Reason for rejection..." rows={3}
+                                                style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "#fff", border: "1px solid #e5e7eb", color: "#111827", fontSize: 12, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box", marginBottom: 8 }} />
+                                            <div style={{ display: "flex", gap: 8 }}>
+                                                <button onClick={() => setShowReject(false)} style={{ flex: 1, padding: 9, borderRadius: 8, background: "#f3f4f6", color: "#374151", border: "none", fontSize: 12, cursor: "pointer" }}>Cancel</button>
+                                                <button onClick={() => updateStatus(selected._id, "rejected", rejectReason)} style={{ flex: 1, padding: 9, borderRadius: 8, background: "#dc2626", color: "#fff", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Confirm Reject</button>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
+                                </>)}
+                                {selected.verificationStatus === "approved" && (
+                                    <button onClick={() => updateStatus(selected._id, "suspended")} style={{ padding: 11, borderRadius: 10, background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Suspend Expert</button>
                                 )}
-                            </>)}
-                            {selected.verificationStatus === "approved" && (
-                                <button onClick={() => updateStatus(selected._id, "suspended")}
-                                    style={{ padding: "11px", borderRadius: 10, background: "rgba(100,100,100,0.2)", color: "#9ca3af", border: "1px solid rgba(100,100,100,0.3)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                                    Suspend Expert
-                                </button>
-                            )}
-                            {(selected.verificationStatus === "rejected" || selected.verificationStatus === "suspended") && (
-                                <button onClick={() => updateStatus(selected._id, "approved")}
-                                    style={{ padding: "11px", borderRadius: 10, background: "#1D9E75", color: "#fff", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                                    Re-approve Expert
-                                </button>
-                            )}
+                                {(selected.verificationStatus === "rejected" || selected.verificationStatus === "suspended") && (
+                                    <button onClick={() => updateStatus(selected._id, "approved")} style={{ padding: 11, borderRadius: 10, background: "#1D9E75", color: "#fff", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Re-approve Expert</button>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                );
-            })()}
+                    );
+                })()}
+            </div>
+
+            <style>{`
+                .exp-layout { display: grid; grid-template-columns: 340px 1fr; gap: 16px; align-items: start; }
+                .exp-list { min-width: 0; }
+                @media (max-width: 768px) { .exp-layout { grid-template-columns: 1fr; } }
+            `}</style>
         </div>
     );
 }
