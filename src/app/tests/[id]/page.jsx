@@ -328,6 +328,16 @@ function TestAttempt() {
     // Keep submitRef in sync so timer can always call latest version
     useEffect(() => { submitRef.current = handleSubmit; }, [handleSubmit]);
 
+    // ── Stop camera stream on unmount (user navigates away mid-test) ─────────
+    useEffect(() => {
+        return () => {
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(t => t.stop());
+                streamRef.current = null;
+            }
+        };
+    }, []);
+
     // ── Start test — FIX: fullscreen in separate try-catch ───────────────────
     const handleStart = async () => {
         setPhase("loading");

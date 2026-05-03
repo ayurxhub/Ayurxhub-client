@@ -13,6 +13,7 @@ const adminLinks = [
     { href: "/admin/tests", icon: "quiz", label: "Test Series" },
     { href: "/admin/blogs", icon: "article", label: "Blog Posts" },
     { href: "/admin/announcements", icon: "campaign", label: "Announcements" },  // ← add this
+    { href: "/admin/lectures", icon: "play_circle", label: "Lectures" },
 ];
 export default function AdminLayout({ children }) {
     const { user, loading } = useAuth();

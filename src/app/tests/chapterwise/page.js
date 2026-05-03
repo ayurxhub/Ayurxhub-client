@@ -48,7 +48,7 @@ const TERMS = [
 ];
 
 function ChapterwiseTests() {
-    const { authAxios } = useAuth();
+    const { authAxios, user } = useAuth();
     const { openProModal } = useProModal();
     const router = useRouter();
     const [activeTerm, setActiveTerm] = useState("term1");

@@ -10,6 +10,7 @@ import Image from "next/image";
 const commonLinks = [
   { href: "/", icon: "home", label: "Home" },
   { href: "/materials", icon: "auto_stories", label: "Curriculum" },
+  { href: "/lectures", icon: "play_circle", label: "Lectures" },
   { href: "/consultations", icon: "medical_services", label: "Consultations" },
   { href: "/consultations/bookings", icon: "calendar_month", label: "My Bookings" },
   { href: "/references", icon: "library_books", label: "References" },
