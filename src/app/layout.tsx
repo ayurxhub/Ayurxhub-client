@@ -13,14 +13,14 @@ export const metadata = {
     description: "Chapter-wise tests, study materials, and expert consultations for BAMS students and Ayurvedic practitioners.",
     url: "https://ayurxhub.com",
     siteName: "AyurXHub",
-    images: [{ url: "https://ayurxhub.com/hero.png" }],
+    images: [{ url: "https://ayurxhub.com/ayurxhub_og.png", width: 1200, height: 630 }],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "AyurXHub — Ayurveda Medical Education",
     description: "BAMS tests, study materials, and Ayurvedic expert consultations.",
-    images: ["https://ayurxhub.com/hero.png"],
+    images: ["https://ayurxhub.com/ayurxhub_og.png"],
   },
   icons: {
     icon: "/Ayurxhub logo.png",
