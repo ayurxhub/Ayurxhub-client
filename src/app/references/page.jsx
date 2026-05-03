@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
+import { useAuth } from "../context/AuthContext";
 const INSTITUTE_IMAGES = {
     aiia: "/Institute/aiia-DELHI.jpg",
     bhu: "/Institute/bhu.jpg",
@@ -260,9 +260,11 @@ function JournalCard({ item }) {
 }
 
 export default function ReferencesPage() {
+    const { authAxios } = useAuth();
     const [tab, setTab] = useState("institutions");
     const [institutions, setInstitutions] = useState([]);
     const [ebooks, setEbooks] = useState([]);
+    const [journals, setJournals] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [filterType, setFilterType] = useState("All");
@@ -271,9 +273,10 @@ export default function ReferencesPage() {
         const fetchReferences = async () => {
             try {
                 const res = await authAxios.get("/references");
-                const data = await res.json();
+                const data = res.data;
                 setInstitutions(data.institutions || []);
                 setEbooks(data.ebooks || []);
+                setJournals([...JOURNALS, ...(data.journals || [])]);
             } catch (err) {
                 console.error("Failed to load references:", err);
             } finally {
@@ -286,7 +289,7 @@ export default function ReferencesPage() {
 
     const instTypes = ["All", ...new Set(institutions.map((i) => i.type))];
     const ebookCats = ["All", ...new Set(ebooks.map((e) => e.category))];
-    const journalPubs = ["All", ...new Set(JOURNALS.map((j) => j.publisher))];
+    const journalPubs = ["All", ...new Set(journals.map((j) => j.publisher))];
 
     const filterOptions = tab === "institutions" ? instTypes : tab === "ebooks" ? ebookCats : journalPubs;
 
@@ -307,7 +310,7 @@ export default function ReferencesPage() {
         return match && (filterType === "All" || e.category === filterType);
     });
 
-    const filteredJournals = JOURNALS.filter((j) => {
+    const filteredJournals = journals.filter((j) => {
         const q = search.toLowerCase();
         const match = j.name.toLowerCase().includes(q) || j.publisher.toLowerCase().includes(q);
 
@@ -319,7 +322,7 @@ export default function ReferencesPage() {
     const TABS = [
         { key: "institutions", icon: "account_balance", label: "Institutions", count: institutions.length },
         { key: "ebooks", icon: "menu_book", label: "E-Books", count: ebooks.length },
-        { key: "journals", icon: "article", label: "Journals", count: JOURNALS.length },
+        { key: "journals", icon: "article", label: "Journals", count: journals.length },
     ];
 
     const handleTabChange = (newTab) => {
@@ -505,15 +508,15 @@ export default function ReferencesPage() {
                             }}
                         >
                             {tab === "institutions"
-                                ? activeData.map((item) => (
-                                    <InstitutionCard key={item.url} item={item} />
+                                ? activeData.map((item, i) => (
+                                    <InstitutionCard key={item._id || item.url || i} item={item} />
                                 ))
                                 : tab === "ebooks"
-                                    ? activeData.map((item) => (
-                                        <EbookCard key={item.url} item={item} />
+                                    ? activeData.map((item, i) => (
+                                        <EbookCard key={item._id || item.url || i} item={item} />
                                     ))
-                                    : activeData.map((item) => (
-                                        <JournalCard key={item.url} item={item} />
+                                    : activeData.map((item, i) => (
+                                        <JournalCard key={item._id || item.url || i} item={item} />
                                     ))}
                         </div>
                     </>
