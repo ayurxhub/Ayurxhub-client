@@ -12,8 +12,8 @@ const adminLinks = [
     { href: "/admin/materials", icon: "menu_book", label: "Materials" },
     { href: "/admin/tests", icon: "quiz", label: "Test Series" },
     { href: "/admin/blogs", icon: "article", label: "Blog Posts" },
+    { href: "/admin/announcements", icon: "campaign", label: "Announcements" },  // ← add this
 ];
-
 export default function AdminLayout({ children }) {
     const { user, loading } = useAuth();
     const router = useRouter();

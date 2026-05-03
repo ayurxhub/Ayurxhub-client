@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { useAuth } from "./context/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
-import FeaturedBlogSection from "./components/FeaturedBlogSection";
 import FeaturedHomeSection from "./components/FeaturedHomeSection";
+import AnnouncementTicker from "./components/AnnouncementTicker";
 
 // ─── Stats hook ───────────────────────────────────────────────────────────────
 function useCountUp(target: number, duration = 1800) {
@@ -166,6 +166,8 @@ export default function LandingPage() {
                 {user ? `${greeting}, ${firstName}` : "Ayurveda Medical EdTech"}
               </span>
             </div>
+
+            <AnnouncementTicker />
 
             <h1
               style={{
@@ -363,7 +365,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-
       {/* ── Test Series CTA — two-column on desktop ── */}
       <section style={{ padding: "0 32px 60px", maxWidth: 1280, margin: "0 auto" }}>
         <div style={{
@@ -499,6 +500,7 @@ export default function LandingPage() {
               src="/Bfd.png"
               alt="AyuRxHub illustration"
               fill
+              sizes="(max-width: 900px) 50vw, 40vw"
               style={{ objectFit: "cover" }}
               priority
             />
