@@ -83,6 +83,11 @@ export default function AdminLectures() {
         fetchAll();
     };
 
+    const handleToggleFeatured = async (l) => {
+        await authAxios.put(`/lectures/${l._id}/feature`);
+        fetchAll();
+    };
+
     const handleDelete = async (id) => {
         if (!window.confirm("Delete this lecture? This cannot be undone.")) return;
         await authAxios.delete(`/lectures/${id}`);
@@ -272,6 +277,11 @@ export default function AdminLectures() {
                                     <button onClick={() => handleToggle(l)}
                                         style={{ ...btn, color: l.isPublished ? "#d97706" : "#059669" }}>
                                         {l.isPublished ? "Unpublish" : "Publish"}
+                                    </button>
+                                    <button onClick={() => handleToggleFeatured(l)}
+                                        title={l.isFeatured ? "Remove from home" : "Feature on home"}
+                                        style={{ ...btn, color: l.isFeatured ? "#f59e0b" : "#6b7280", background: l.isFeatured ? "#fef9c3" : "#fff", borderColor: l.isFeatured ? "#fde68a" : "#e5e7eb" }}>
+                                        {l.isFeatured ? "⭐" : "☆"}
                                     </button>
                                     <button onClick={() => handleEdit(l)} style={btn}>Edit</button>
                                     <button onClick={() => handleDelete(l._id)} style={{ ...btn, color: "#dc2626", borderColor: "#fecaca" }}>Delete</button>

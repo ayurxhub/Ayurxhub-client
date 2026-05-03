@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import Link from "next/link";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
@@ -79,6 +80,21 @@ export default function AnnouncementTicker() {
                 <span style={{ fontWeight: 700, marginRight: 4 }}>{a.title}:</span>
                 {a.message}
             </span>
+
+            {/* Link button */}
+            {a.link && (
+                <Link href={a.link}
+                    style={{
+                        fontSize: 10, fontWeight: 700, padding: "3px 10px",
+                        borderRadius: 20, flexShrink: 0, whiteSpace: "nowrap",
+                        background: "rgba(255,255,255,0.2)",
+                        color: "#fff", textDecoration: "none",
+                        border: "1px solid rgba(255,255,255,0.3)",
+                        transition: "background 0.15s",
+                    }}>
+                    {a.linkText || "Learn More"} →
+                </Link>
+            )}
 
             {/* Dots navigation */}
             {announcements.length > 1 && (

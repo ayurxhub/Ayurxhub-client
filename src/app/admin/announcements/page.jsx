@@ -13,7 +13,7 @@ const TYPE_CONFIG = {
     news: { label: "News", icon: "📰", color: "#1D9E75" },
 };
 
-const EMPTY = { title: "", message: "", type: "notice", expiresAt: "" };
+const EMPTY = { title: "", message: "", type: "notice", expiresAt: "", link: "", linkText: "Learn More" };
 
 export default function AdminAnnouncements() {
     const { authAxios } = useAuth();
@@ -58,6 +58,7 @@ export default function AdminAnnouncements() {
         setForm({
             title: a.title, message: a.message, type: a.type,
             expiresAt: a.expiresAt ? new Date(a.expiresAt).toISOString().slice(0, 16) : "",
+            link: a.link || "", linkText: a.linkText || "Learn More",
         });
         setEditing(a._id);
         setShowForm(true);
@@ -136,6 +137,16 @@ export default function AdminAnnouncements() {
                             <input type="datetime-local" value={form.expiresAt}
                                 onChange={e => setForm(f => ({ ...f, expiresAt: e.target.value }))}
                                 style={inp} />
+                        </div>
+                        <div>
+                            <p style={labelSt}>Link URL (optional)</p>
+                            <input value={form.link} onChange={e => setForm(f => ({ ...f, link: e.target.value }))}
+                                placeholder="https://... or /tests" style={inp} />
+                        </div>
+                        <div>
+                            <p style={labelSt}>Link Button Text</p>
+                            <input value={form.linkText} onChange={e => setForm(f => ({ ...f, linkText: e.target.value }))}
+                                placeholder="Learn More" style={inp} />
                         </div>
                     </div>
 

@@ -35,6 +35,7 @@ function stripHtml(html = "") {
 export default function FeaturedHomeSection() {
     const [blogs, setBlogs] = useState([]);
     const [materials, setMaterials] = useState([]);
+    const [lectures, setLectures] = useState([]);
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState("all");
 
@@ -42,21 +43,25 @@ export default function FeaturedHomeSection() {
         Promise.allSettled([
             axios.get(`${API}/blogs`, { params: { featured: "true", limit: 6 } }),
             axios.get(`${API}/materials`, { params: { featured: "true", limit: 6 } }),
-        ]).then(([b, m]) => {
+            axios.get(`${API}/lectures`, { params: { featured: "true", limit: 6 } }),
+        ]).then(([b, m, l]) => {
             if (b.status === "fulfilled") setBlogs(b.value.data.blogs || []);
             if (m.status === "fulfilled") setMaterials(m.value.data.materials || []);
+            if (l.status === "fulfilled") setLectures(l.value.data.lectures || []);
         }).finally(() => setLoading(false));
     }, []);
 
     const allItems = [
         ...blogs.map(b => ({ ...b, _type: "blog" })),
         ...materials.map(m => ({ ...m, _type: "material" })),
+        ...lectures.map(l => ({ ...l, _type: "lecture" })),
     ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     const displayed =
         tab === "blogs" ? allItems.filter(i => i._type === "blog") :
             tab === "courses" ? allItems.filter(i => i._type === "material") :
-                allItems;
+                tab === "lectures" ? allItems.filter(i => i._type === "lecture") :
+                    allItems;
 
     if (!loading && allItems.length === 0) return null;
 
@@ -64,6 +69,7 @@ export default function FeaturedHomeSection() {
         { key: "all", label: "All", count: allItems.length },
         { key: "blogs", label: "Articles", count: blogs.length },
         { key: "courses", label: "Courses & Books", count: materials.length },
+        { key: "lectures", label: "Lectures", count: lectures.length },
     ].filter(t => t.key === "all" || t.count > 0);
 
     return (
@@ -160,12 +166,19 @@ export default function FeaturedHomeSection() {
 
 function Card({ item, index }) {
     const isBlog = item._type === "blog";
+    const isLecture = item._type === "lecture";
     const color = COLORS[item.category] || COLORS["Other"];
-    const href = isBlog ? `/blog/${item.slug}` : `/materials/${item._id}`;
+    const href = isBlog ? `/blog/${item.slug}` : isLecture ? `/lectures` : `/materials/${item._id}`;
     const cover = isBlog ? item.coverImage : item.thumbnail;
     const excerpt = stripHtml(isBlog
         ? (item.excerpt || item.content || "")
-        : (item.description || "")).slice(0, 90);
+        : isLecture
+            ? (item.description || "")
+            : (item.description || "")).slice(0, 90);
+
+    const typeLabel = isBlog ? "Article" : isLecture ? "Lecture" : "Book";
+    const typeIcon = isBlog ? "article" : isLecture ? "play_circle" : "menu_book";
+    const actionLabel = isBlog ? "Read" : isLecture ? "Watch" : "View";
 
     const dateStr = new Date(item.createdAt).toLocaleDateString("en-IN", {
         day: "numeric", month: "short", year: "numeric",
@@ -203,7 +216,7 @@ function Card({ item, index }) {
                             <span className="material-symbols-outlined" style={{
                                 fontSize: 42, color, opacity: 0.2, fontVariationSettings: "'FILL' 1",
                             }}>
-                                {isBlog ? "article" : "menu_book"}
+                                {typeIcon}
                             </span>
                         </div>
                     )}
@@ -217,7 +230,7 @@ function Card({ item, index }) {
                             fontSize: 10, fontWeight: 700, color,
                             background: `${color}14`, padding: "2px 8px", borderRadius: 20,
                         }}>
-                            {isBlog ? "Article" : "Book"}
+                            {typeLabel}
                         </span>
                     </div>
 
@@ -253,7 +266,7 @@ function Card({ item, index }) {
                             fontSize: 11, color, fontWeight: 700,
                             display: "flex", alignItems: "center", gap: 2,
                         }}>
-                            {isBlog ? "Read" : "View"}
+                            {actionLabel}
                             <span className="material-symbols-outlined" style={{ fontSize: 13 }}>arrow_forward</span>
                         </span>
                     </div>
