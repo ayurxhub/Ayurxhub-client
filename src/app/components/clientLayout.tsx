@@ -5,6 +5,7 @@ import { useState } from "react";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 import { AuthProvider } from "../context/AuthContext";
+import { ProModalProvider } from "../context/ProModalContext";
 
 export default function ClientLayout({
     children,
@@ -33,21 +34,22 @@ export default function ClientLayout({
 
     return (
         <AuthProvider>
-            {showSidebar ? (
-                <div className="layout-shell">
-                    <Sidebar
-                        collapsed={collapsed}
-                        setCollapsed={setCollapsed}
-                        mobileOpen={mobileOpen}
-                        setMobileOpen={setMobileOpen}
-                    />
+            <ProModalProvider>
+                {showSidebar ? (
+                    <div className="layout-shell">
+                        <Sidebar
+                            collapsed={collapsed}
+                            setCollapsed={setCollapsed}
+                            mobileOpen={mobileOpen}
+                            setMobileOpen={setMobileOpen}
+                        />
 
-                    <main className="layout-main">
-                        <Navbar onMenuClick={() => setMobileOpen(true)} />
-                        <div className="content-wrapper">{children}</div>
-                    </main>
+                        <main className="layout-main">
+                            <Navbar onMenuClick={() => setMobileOpen(true)} />
+                            <div className="content-wrapper">{children}</div>
+                        </main>
 
-                    <style jsx>{`
+                        <style jsx>{`
                         .layout-shell {
                             display: flex;
                             min-height: 100vh;
@@ -71,20 +73,20 @@ export default function ClientLayout({
                             }
                         }
                     `}</style>
-                </div>
-            ) : (
-                <>
-                    <div className="mobile-drawer-only">
-                        {!isAdmin && <Sidebar
-                            collapsed={collapsed}
-                            setCollapsed={setCollapsed}
-                            mobileOpen={mobileOpen}
-                            setMobileOpen={setMobileOpen}
-                        />}
                     </div>
-                    {!isAdmin && <Navbar onMenuClick={() => setMobileOpen(true)} />}
-                    <main>{children}</main>
-                    <style jsx>{`
+                ) : (
+                    <>
+                        <div className="mobile-drawer-only">
+                            {!isAdmin && <Sidebar
+                                collapsed={collapsed}
+                                setCollapsed={setCollapsed}
+                                mobileOpen={mobileOpen}
+                                setMobileOpen={setMobileOpen}
+                            />}
+                        </div>
+                        {!isAdmin && <Navbar onMenuClick={() => setMobileOpen(true)} />}
+                        <main>{children}</main>
+                        <style jsx>{`
                         .mobile-drawer-only {
                             display: none;
                         }
@@ -94,8 +96,9 @@ export default function ClientLayout({
                             }
                         }
                     `}</style>
-                </>
-            )}
+                    </>
+                )}
+            </ProModalProvider>
         </AuthProvider>
     );
 }

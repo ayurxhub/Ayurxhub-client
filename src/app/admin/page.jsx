@@ -5,102 +5,162 @@ import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
 
 export default function AdminOverview() {
-    const { authAxios } = useAuth();
-    const router = useRouter();
-    const [stats, setStats] = useState(null);
-    const [loading, setLoading] = useState(true);
+  const { authAxios } = useAuth();
+  const router = useRouter();
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [testsAreFree, setTestsAreFree] = useState(true);
+  const [toggling, setToggling] = useState(false);
 
-    useEffect(() => {
-        authAxios
-            .get("/admin/stats")
-            .then((res) => setStats(res.data.stats))
-            .catch(console.error)
-            .finally(() => setLoading(false));
-    }, []);
+  const handleToggle = async () => {
+    setToggling(true);
+    try {
+      const res = await authAxios.put("/settings", { testsAreFree: !testsAreFree });
+      setTestsAreFree(res.data.settings.testsAreFree);
+    } catch (err) { console.error(err); }
+    finally { setToggling(false); }
+  };
 
-    if (loading) return <Spinner />;
+  useEffect(() => {
+    authAxios.get("/settings").then(r => setTestsAreFree(r.data.settings?.testsAreFree ?? true)).catch(() => { });
+    authAxios
+      .get("/admin/stats")
+      .then((res) => setStats(res.data.stats))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
 
-    const statCards = [
-        { label: "Total Students", value: stats.totalStudents, color: "#059669" },
-        { label: "Total Experts", value: stats.totalExperts, color: "#2563eb" },
-        { label: "Total Bookings", value: stats.totalBookings, color: "#d97706" },
-        { label: "Completed", value: stats.completedBookings, color: "#059669" },
-        { label: "Cancelled", value: stats.cancelledBookings, color: "#dc2626" },
-        { label: "Pending Verification", value: stats.pendingVerification, color: "#d97706" },
-        { label: "Total Reviews", value: stats.totalReviews, color: "#2563eb" },
-        {
-            label: "Total Revenue",
-            value: `₹${stats.totalRevenue?.toLocaleString()}`,
-            color: "#059669",
-        },
-    ];
+  if (loading) return <Spinner />;
 
-    return (
-        <div className="overview-page">
-            <div className="page-header">
-                <h1>Overview</h1>
-                <p>Platform statistics and recent activity</p>
+  const statCards = [
+    { label: "Total Students", value: stats.totalStudents, color: "#059669" },
+    { label: "Total Experts", value: stats.totalExperts, color: "#2563eb" },
+    { label: "Total Bookings", value: stats.totalBookings, color: "#d97706" },
+    { label: "Completed", value: stats.completedBookings, color: "#059669" },
+    { label: "Cancelled", value: stats.cancelledBookings, color: "#dc2626" },
+    { label: "Pending Verification", value: stats.pendingVerification, color: "#d97706" },
+    { label: "Total Reviews", value: stats.totalReviews, color: "#2563eb" },
+    {
+      label: "Total Revenue",
+      value: `₹${stats.totalRevenue?.toLocaleString()}`,
+      color: "#059669",
+    },
+  ];
+
+  return (
+    <div className="overview-page">
+      <div className="page-header">
+        <h1>Overview</h1>
+        <p>Platform statistics and recent activity</p>
+      </div>
+
+      {/* Pro Access Toggle */}
+      <div style={{
+        background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14,
+        padding: "16px 20px", marginBottom: 24,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        flexWrap: "wrap", gap: 12,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 10,
+            background: testsAreFree ? "#d1fae5" : "#fef3c7",
+            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20,
+          }}>
+            {testsAreFree ? "🆓" : "🔒"}
+          </div>
+          <div>
+            <p style={{ fontSize: 14, fontWeight: 700, color: "#111827", margin: 0 }}>
+              Full Test Access
+            </p>
+            <p style={{ fontSize: 12, color: "#6b7280", margin: 0 }}>
+              {testsAreFree
+                ? "Currently FREE — all full tests accessible to everyone"
+                : "Currently PAID — full tests require Pro subscription"}
+            </p>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: testsAreFree ? "#059669" : "#d97706" }}>
+            {testsAreFree ? "Free Mode" : "Pro Mode"}
+          </span>
+          <button onClick={handleToggle} disabled={toggling} style={{
+            width: 52, height: 28, borderRadius: 14, border: "none",
+            background: testsAreFree ? "#1D9E75" : "#e5e7eb",
+            cursor: toggling ? "not-allowed" : "pointer",
+            position: "relative", transition: "background 0.2s",
+          }}>
+            <span style={{
+              position: "absolute", top: 3,
+              left: testsAreFree ? 26 : 4,
+              width: 22, height: 22, borderRadius: "50%",
+              background: "#fff",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.2)",
+              transition: "left 0.2s",
+            }} />
+          </button>
+        </div>
+      </div>
+
+      <div className="stats-grid">
+        {statCards.map(({ label, value, color }) => (
+          <div className="stat-card" key={label}>
+            <p className="stat-label">{label}</p>
+            <p className="stat-value" style={{ color }}>
+              {value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="content-grid">
+        <Panel title="Recent users" onViewAll={() => router.push("/admin/users")}>
+          {stats.recentUsers?.map((u) => (
+            <div className="list-row" key={u._id}>
+              <div className="avatar">
+                {u.name
+                  ?.split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .toUpperCase()
+                  .slice(0, 2)}
+              </div>
+
+              <div className="row-main">
+                <p className="row-title">{u.name}</p>
+                <p className="row-subtitle">{u.email}</p>
+              </div>
+
+              <span className={`badge ${u.role === "expert" ? "expert" : "student"}`}>
+                {u.role}
+              </span>
             </div>
+          ))}
+        </Panel>
 
-            <div className="stats-grid">
-                {statCards.map(({ label, value, color }) => (
-                    <div className="stat-card" key={label}>
-                        <p className="stat-label">{label}</p>
-                        <p className="stat-value" style={{ color }}>
-                            {value}
-                        </p>
-                    </div>
-                ))}
+        <Panel title="Recent bookings" onViewAll={() => router.push("/admin/bookings")}>
+          {stats.recentBookings?.map((b) => (
+            <div className="list-row booking-row" key={b._id}>
+              <div className="row-main">
+                <p className="row-title">
+                  {b.student?.name} → {b.expert?.name}
+                </p>
+                <p className="row-subtitle">
+                  {new Date(b.date).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                  })}{" "}
+                  · {b.startTime}
+                </p>
+              </div>
+
+              <span className="badge student">{b.status}</span>
             </div>
+          ))}
+        </Panel>
+      </div>
 
-            <div className="content-grid">
-                <Panel title="Recent users" onViewAll={() => router.push("/admin/users")}>
-                    {stats.recentUsers?.map((u) => (
-                        <div className="list-row" key={u._id}>
-                            <div className="avatar">
-                                {u.name
-                                    ?.split(" ")
-                                    .map((n) => n[0])
-                                    .join("")
-                                    .toUpperCase()
-                                    .slice(0, 2)}
-                            </div>
-
-                            <div className="row-main">
-                                <p className="row-title">{u.name}</p>
-                                <p className="row-subtitle">{u.email}</p>
-                            </div>
-
-                            <span className={`badge ${u.role === "expert" ? "expert" : "student"}`}>
-                                {u.role}
-                            </span>
-                        </div>
-                    ))}
-                </Panel>
-
-                <Panel title="Recent bookings" onViewAll={() => router.push("/admin/bookings")}>
-                    {stats.recentBookings?.map((b) => (
-                        <div className="list-row booking-row" key={b._id}>
-                            <div className="row-main">
-                                <p className="row-title">
-                                    {b.student?.name} → {b.expert?.name}
-                                </p>
-                                <p className="row-subtitle">
-                                    {new Date(b.date).toLocaleDateString("en-IN", {
-                                        day: "numeric",
-                                        month: "short",
-                                    })}{" "}
-                                    · {b.startTime}
-                                </p>
-                            </div>
-
-                            <span className="badge student">{b.status}</span>
-                        </div>
-                    ))}
-                </Panel>
-            </div>
-
-            <style jsx>{`
+      <style jsx>{`
         .overview-page {
           width: 100%;
           max-width: 100%;
@@ -309,30 +369,30 @@ export default function AdminOverview() {
           }
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }
 
 function Panel({ title, onViewAll, children }) {
-    return (
-        <div className="panel">
-            <div className="panel-header">
-                <p className="panel-title">{title}</p>
-                <button onClick={onViewAll} className="view-btn">
-                    View all
-                </button>
-            </div>
-            {children}
-        </div>
-    );
+  return (
+    <div className="panel">
+      <div className="panel-header">
+        <p className="panel-title">{title}</p>
+        <button onClick={onViewAll} className="view-btn">
+          View all
+        </button>
+      </div>
+      {children}
+    </div>
+  );
 }
 
 function Spinner() {
-    return (
-        <div className="spinner-wrap">
-            <div className="spinner" />
+  return (
+    <div className="spinner-wrap">
+      <div className="spinner" />
 
-            <style jsx>{`
+      <style jsx>{`
         .spinner-wrap {
           display: flex;
           justify-content: center;
@@ -356,6 +416,6 @@ function Spinner() {
           }
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }

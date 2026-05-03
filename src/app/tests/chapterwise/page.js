@@ -4,6 +4,10 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useRouter } from "next/navigation";
 import ProtectedRoute from "../../components/ProtectedRoute";
+import { useProModal } from "../../context/ProModalContext";
+import axios from "axios";
+
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 export default function ChapterwisePage() {
     return <ProtectedRoute><ChapterwiseTests /></ProtectedRoute>;
@@ -45,21 +49,28 @@ const TERMS = [
 
 function ChapterwiseTests() {
     const { authAxios } = useAuth();
+    const { openProModal } = useProModal();
     const router = useRouter();
     const [activeTerm, setActiveTerm] = useState("term1");
     const [testsByChapter, setTestsByChapter] = useState({});
     const [attempts, setAttempts] = useState({});
     const [loading, setLoading] = useState(true);
+    const [testsAreFree, setTestsAreFree] = useState(true);
     const [expandedChapter, setExpandedChapter] = useState(null);
 
     useEffect(() => {
         const load = async () => {
             setLoading(true);
             try {
-                const [testsRes, attemptsRes] = await Promise.all([
+                const [testsRes, attemptsRes, settingsRes] = await Promise.all([
                     authAxios.get("/tests"),
                     authAxios.get("/tests/my-attempts"),
+                    axios.get(`${API}/settings`),
                 ]);
+
+                if (settingsRes.data?.settings) {
+                    setTestsAreFree(settingsRes.data.settings.testsAreFree ?? true);
+                }
 
                 const allTests = [
                     ...(testsRes.data.bySubject?.["Swasthavritta evam Yoga"]?.free || []),
@@ -194,7 +205,13 @@ function ChapterwiseTests() {
                                     {isExpanded && hasTests && (
                                         <div style={{ borderTop: "1px solid #f3f4f6", padding: "16px 22px", background: "#fafafa", display: "flex", flexDirection: "column", gap: 10 }}>
                                             {freeTest && <TestRow test={freeTest} attempt={freeAtt} onStart={() => router.push(`/tests/${freeTest._id}`)} />}
-                                            {paidTest && <TestRow test={paidTest} attempt={paidAtt} onStart={() => router.push(`/tests/${paidTest._id}`)} />}
+                                            {paidTest && <TestRow test={paidTest} attempt={paidAtt} onStart={() => {
+                                                if (testsAreFree || user?.isPro && new Date(user?.proExpiry) > new Date()) {
+                                                    router.push(`/tests/${paidTest._id}`);
+                                                } else {
+                                                    openProModal();
+                                                }
+                                            }} isPaid={!testsAreFree && !(user?.isPro && new Date(user?.proExpiry) > new Date())} />}
                                         </div>
                                     )}
                                 </div>
@@ -208,11 +225,12 @@ function ChapterwiseTests() {
     );
 }
 
-function TestRow({ test, attempt, onStart }) {
+function TestRow({ test, attempt, onStart, isPaid }) {
     const isFree = test.price === 0;
+    const locked = isPaid && !isFree; // full test is locked when platform is in paid mode
     return (
-        <div style={{ background: "#fff", borderRadius: 12, padding: "14px 18px", border: `1px solid ${isFree ? "rgba(134,239,172,0.4)" : "rgba(147,197,253,0.4)"}`, display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, background: isFree ? "#dcfce7" : "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{isFree ? "🆓" : "⭐"}</div>
+        <div style={{ background: "#fff", borderRadius: 12, padding: "14px 18px", border: `1px solid ${isFree ? "rgba(134,239,172,0.4)" : locked ? "rgba(245,158,11,0.3)" : "rgba(147,197,253,0.4)"}`, display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, background: isFree ? "#dcfce7" : locked ? "#fef3c7" : "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{isFree ? "🆓" : locked ? "🔒" : "⭐"}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 13, fontWeight: 600, color: "#111827", margin: "0 0 4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{test.title}</p>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -223,9 +241,8 @@ function TestRow({ test, attempt, onStart }) {
                 </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                {/* ₹{test.price} — temporarily hidden, all tests free */}
-                <button onClick={onStart} style={{ padding: "8px 20px", borderRadius: 10, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, background: isFree ? "linear-gradient(135deg, #0e4f3b, #1D9E75)" : "linear-gradient(135deg, #1e40af, #3b82f6)", color: "#fff", whiteSpace: "nowrap" }}>
-                    {attempt ? "Retake →" : "Start →"}
+                <button onClick={onStart} style={{ padding: "8px 20px", borderRadius: 10, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, background: isFree ? "linear-gradient(135deg, #0e4f3b, #1D9E75)" : locked ? "linear-gradient(135deg, #92400e, #f59e0b)" : "linear-gradient(135deg, #1e40af, #3b82f6)", color: "#fff", whiteSpace: "nowrap" }}>
+                    {locked ? "🔒 Unlock Pro" : attempt ? "Retake →" : "Start →"}
                 </button>
             </div>
         </div>

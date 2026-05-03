@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
+import { useProModal } from "../context/ProModalContext";
 import { useEffect } from "react";
 import Image from "next/image";
 
@@ -19,7 +20,7 @@ const commonLinks = [
 ];
 
 const expertLinks = [
-  { href: "/", icon: "dashboard", label: "Dashboasrd" },
+  { href: "/consultations/dashboard", icon: "dashboard", label: "Dashboard" },
   { href: "/consultations", icon: "medical_services", label: "Consultations" },
   { href: "/consultations/bookings", icon: "calendar_month", label: "My Bookings" },
   { href: "/availability", icon: "event_available", label: "My Availability" },
@@ -34,6 +35,7 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
   const path = usePathname();
   const router = useRouter();
   const { user } = useAuth();
+  const { openProModal } = useProModal();
 
   const isExpert = user?.role === "expert";
   const navLinks = isExpert ? expertLinks : commonLinks;
@@ -266,6 +268,7 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
           ) : (
             <button
               type="button"
+              onClick={openProModal}
               title={isCollapsed ? "Upgrade to Practitioner" : ""}
               style={{
                 width: "100%", minHeight: 40,
