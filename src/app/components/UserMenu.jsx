@@ -85,6 +85,14 @@ export default function UserMenu() {
                                 🩺 Expert Dashboard
                             </button>
                         )}
+                        {user?.role === "admin" && (
+                            <button
+                                onClick={() => { router.push("/admin"); setOpen(false); }}
+                                className="w-full text-left px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50 flex items-center gap-2 font-medium"
+                            >
+                                🛡️ Admin Panel
+                            </button>
+                        )}
                     </div>
 
                     <div className="border-t border-gray-100 py-1">
