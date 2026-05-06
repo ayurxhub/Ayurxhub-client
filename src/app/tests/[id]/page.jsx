@@ -127,6 +127,9 @@ function TestAttempt() {
             }
         };
         const handleBlur = () => {
+            const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+            if (isMobile) return; // exit before setState entirely — cleanest approach
+
             setTabViolations(prev => {
                 const next = prev + 1;
                 if (next >= MAX_VIOLATIONS) {
@@ -236,7 +239,7 @@ function TestAttempt() {
             streamRef.current = stream;
             if (webcamRef.current) webcamRef.current.srcObject = stream;
             setWebcamActive(true);
-            faceTimerRef.current = setInterval(checkFacePresence, 8000);
+            faceTimerRef.current = setInterval(checkFacePresence, 20000);
         } catch (e) {
             console.warn("Webcam not available:", e);
             setWebcamFlags(prev => [...prev, { type: "webcam_denied", time: new Date().toISOString() }]);
@@ -245,7 +248,10 @@ function TestAttempt() {
 
     const checkFacePresence = () => {
         if (!webcamRef.current || !canvasRef.current) return;
+        const video = webcamRef.current;
         const canvas = canvasRef.current;
+        if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) return;
+
         const ctx = canvas.getContext("2d");
         canvas.width = webcamRef.current.videoWidth;
         canvas.height = webcamRef.current.videoHeight;
@@ -266,7 +272,7 @@ function TestAttempt() {
             variance += Math.pow(brightness - avgBrightness, 2);
         }
         variance /= samples;
-        const suspicious = avgBrightness < 20 || variance < 50;
+        const suspicious = avgBrightness < 8 && variance < 10;
         if (suspicious) {
             setWebcamFlags(prev => [...prev, { type: "face_absent", time: new Date().toISOString(), brightness: Math.round(avgBrightness) }]);
             setViolationMsg("📷 Face not detected — please stay in front of the camera.");
