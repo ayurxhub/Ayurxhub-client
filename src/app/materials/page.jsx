@@ -39,11 +39,23 @@ function MaterialsList() {
 const handleDownload = async (id, title) => {
     setDownloading(id);
     try {
-        // Add timestamp to bust any cached 404
-        const res = await authAxios.get(`/materials/${id}/download?t=${Date.now()}`);
-        window.open(res.data.downloadUrl, "_blank");
+        // Directly hit the download endpoint — backend streams the file
+        const response = await authAxios.get(`/materials/${id}/download?t=${Date.now()}`, {
+            responseType: "blob",  // ← important
+        });
+
+        // Create a blob URL and trigger download
+        const blob = new Blob([response.data], { type: "application/pdf" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${title || "material"}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
     } catch (err) {
-        console.error("Download failed:", err.response?.data);
+        console.error("Download failed:", err);
     } finally {
         setDownloading(null);
     }
