@@ -39,13 +39,15 @@ function MaterialsList() {
 const handleDownload = async (id, title) => {
     setDownloading(id);
     try {
-        // Directly hit the download endpoint — backend streams the file
-        const response = await authAxios.get(`/materials/${id}/download?t=${Date.now()}`, {
-            responseType: "blob",  // ← important
-        });
+        // Step 1: get signed URL from your backend
+        const res = await authAxios.get(`/materials/${id}/download?t=${Date.now()}`);
+        const { downloadUrl } = res.data;
 
-        // Create a blob URL and trigger download
-        const blob = new Blob([response.data], { type: "application/pdf" });
+        // Step 2: fetch the PDF as blob directly from Cloudinary
+        const fileRes = await fetch(downloadUrl);
+        if (!fileRes.ok) throw new Error("Failed to fetch file");
+
+        const blob = await fileRes.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
