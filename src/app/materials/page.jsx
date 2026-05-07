@@ -36,20 +36,18 @@ function MaterialsList() {
             setLoading(false);
         }
     };
-
-    const handleDownload = async (id, title) => {
-        setDownloading(id);
-        try {
-            const res = await authAxios.get(`/materials/${id}/download`);
-            // Open PDF in new tab
-            window.open(res.data.downloadUrl, "_blank");
-        } catch (err) {
-            setDownloadError("Download failed. Please try again.");
-        } finally {
-            setDownloading(null);
-        }
-    };
-
+const handleDownload = async (id, title) => {
+    setDownloading(id);
+    try {
+        // Add timestamp to bust any cached 404
+        const res = await authAxios.get(`/materials/${id}/download?t=${Date.now()}`);
+        window.open(res.data.downloadUrl, "_blank");
+    } catch (err) {
+        console.error("Download failed:", err.response?.data);
+    } finally {
+        setDownloading(null);
+    }
+};
     const formatSize = (bytes) => {
         if (bytes > 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
         return `${(bytes / 1024).toFixed(0)} KB`;
