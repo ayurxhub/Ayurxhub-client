@@ -37,8 +37,23 @@ function MaterialDetail({ id }) {
         setDownloading(true);
         setDlError("");
         try {
+            // Step 1: get signed CDN URL from backend
             const res = await authAxios.get(`/materials/${id}/download?t=${Date.now()}`);
-            window.open(res.data.downloadUrl.replace("/upload/", "/upload/fl_attachment/"), "_blank");
+            const { downloadUrl, title: dlTitle } = res.data;
+
+            // Step 2: fetch PDF as blob (works because CDN URL has proper CORS headers)
+            const fileRes = await fetch(downloadUrl);
+            if (!fileRes.ok) throw new Error("Failed to fetch file");
+
+            const blob = await fileRes.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${dlTitle || material?.title || "material"}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
         } catch (err) {
             setDlError("Download failed. Please try again.");
         } finally {

@@ -36,32 +36,32 @@ function MaterialsList() {
             setLoading(false);
         }
     };
-const handleDownload = async (id, title) => {
-    setDownloading(id);
-    try {
-        // Step 1: get signed URL from your backend
-        const res = await authAxios.get(`/materials/${id}/download?t=${Date.now()}`);
-        const { downloadUrl } = res.data;
+    const handleDownload = async (id, title) => {
+        setDownloading(id);
+        try {
+            // Step 1: get signed URL from your backend
+            const res = await authAxios.get(`/materials/${id}/download?t=${Date.now()}`);
+            const { downloadUrl } = res.data;
 
-        // Step 2: fetch the PDF as blob directly from Cloudinary
-        const fileRes = await fetch(downloadUrl);
-        if (!fileRes.ok) throw new Error("Failed to fetch file");
+            // Step 2: fetch the PDF as blob directly from Cloudinary
+            const fileRes = await fetch(downloadUrl);
+            if (!fileRes.ok) throw new Error("Failed to fetch file");
 
-        const blob = await fileRes.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${title || "material"}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-    } catch (err) {
-        console.error("Download failed:", err);
-    } finally {
-        setDownloading(null);
-    }
-};
+            const blob = await fileRes.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${title || "material"}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error("Download failed:", err);
+        } finally {
+            setDownloading(null);
+        }
+    };
     const formatSize = (bytes) => {
         if (bytes > 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
         return `${(bytes / 1024).toFixed(0)} KB`;
