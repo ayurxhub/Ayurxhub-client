@@ -16,6 +16,7 @@ function MaterialDetail({ id }) {
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
     const [downloading, setDownloading] = useState(false);
+    const [viewing, setViewing] = useState(false);
     const [dlError, setDlError] = useState("");
 
     useEffect(() => { fetchMaterial(); }, [id]);
@@ -33,23 +34,37 @@ function MaterialDetail({ id }) {
         }
     };
 
+    const handleView = async () => {
+        setViewing(true);
+        setDlError("");
+        try {
+            const res = await authAxios.get(`/materials/${id}/download?inline=true&t=${Date.now()}`, {
+                responseType: "blob",
+            });
+            const blob = new Blob([res.data], { type: "application/pdf" });
+            const url = window.URL.createObjectURL(blob);
+            window.open(url, "_blank");
+            setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+        } catch (err) {
+            setDlError("Could not open PDF. Please try again.");
+        } finally {
+            setViewing(false);
+        }
+    };
+
     const handleDownload = async () => {
         setDownloading(true);
         setDlError("");
         try {
-            // Step 1: get signed CDN URL from backend
-            const res = await authAxios.get(`/materials/${id}/download?t=${Date.now()}`);
-            const { downloadUrl, title: dlTitle } = res.data;
-
-            // Step 2: fetch PDF as blob (works because CDN URL has proper CORS headers)
-            const fileRes = await fetch(downloadUrl);
-            if (!fileRes.ok) throw new Error("Failed to fetch file");
-
-            const blob = await fileRes.blob();
+            // Backend proxies the file directly — request it as a blob
+            const res = await authAxios.get(`/materials/${id}/download?t=${Date.now()}`, {
+                responseType: "blob",
+            });
+            const blob = new Blob([res.data], { type: "application/pdf" });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `${dlTitle || material?.title || "material"}.pdf`;
+            a.download = `${material?.title || "material"}.pdf`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -162,10 +177,16 @@ function MaterialDetail({ id }) {
                     {dlError && (
                         <p style={{ fontSize: 12, color: "#dc2626", marginBottom: 10 }}>{dlError}</p>
                     )}
-                    <button onClick={handleDownload} disabled={downloading}
-                        style={{ width: "100%", padding: "11px 0", borderRadius: "var(--border-radius-md)", background: "#1D9E75", color: "#fff", border: "none", fontSize: 14, fontWeight: 600, cursor: downloading ? "not-allowed" : "pointer", opacity: downloading ? 0.7 : 1, fontFamily: "var(--font-sans)", transition: "opacity 0.15s" }}>
-                        {downloading ? "Preparing download..." : "⬇ Download PDF"}
-                    </button>
+                    <div style={{ display: "flex", gap: 10 }}>
+                        <button onClick={handleView} disabled={viewing}
+                            style={{ flex: 1, padding: "11px 0", borderRadius: "var(--border-radius-md)", background: "var(--color-background-secondary)", color: "var(--color-text-primary)", border: "0.5px solid var(--color-border-secondary)", fontSize: 14, fontWeight: 600, cursor: viewing ? "not-allowed" : "pointer", opacity: viewing ? 0.7 : 1, fontFamily: "var(--font-sans)", transition: "opacity 0.15s" }}>
+                            {viewing ? "Opening..." : "👁 View PDF"}
+                        </button>
+                        <button onClick={handleDownload} disabled={downloading}
+                            style={{ flex: 1, padding: "11px 0", borderRadius: "var(--border-radius-md)", background: "#1D9E75", color: "#fff", border: "none", fontSize: 14, fontWeight: 600, cursor: downloading ? "not-allowed" : "pointer", opacity: downloading ? 0.7 : 1, fontFamily: "var(--font-sans)", transition: "opacity 0.15s" }}>
+                            {downloading ? "Preparing..." : "⬇ Download PDF"}
+                        </button>
+                    </div>
                 </div>
 
                 {/* Uploaded by */}

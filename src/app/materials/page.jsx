@@ -20,6 +20,7 @@ function MaterialsList() {
     const [category, setCategory] = useState("All");
     const [search, setSearch] = useState("");
     const [downloading, setDownloading] = useState(null);
+    const [viewing, setViewing] = useState(null);
 
     useEffect(() => { fetchMaterials(); }, [category]);
 
@@ -39,15 +40,11 @@ function MaterialsList() {
     const handleDownload = async (id, title) => {
         setDownloading(id);
         try {
-            // Step 1: get signed URL from your backend
-            const res = await authAxios.get(`/materials/${id}/download?t=${Date.now()}`);
-            const { downloadUrl } = res.data;
-
-            // Step 2: fetch the PDF as blob directly from Cloudinary
-            const fileRes = await fetch(downloadUrl);
-            if (!fileRes.ok) throw new Error("Failed to fetch file");
-
-            const blob = await fileRes.blob();
+            // Backend now proxies the file directly — request it as a blob
+            const res = await authAxios.get(`/materials/${id}/download?t=${Date.now()}`, {
+                responseType: "blob",
+            });
+            const blob = new Blob([res.data], { type: "application/pdf" });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -62,6 +59,24 @@ function MaterialsList() {
             setDownloading(null);
         }
     };
+    const handleView = async (id) => {
+        setViewing(id);
+        try {
+            const res = await authAxios.get(`/materials/${id}/download?inline=true&t=${Date.now()}`, {
+                responseType: "blob",
+            });
+            const blob = new Blob([res.data], { type: "application/pdf" });
+            const url = window.URL.createObjectURL(blob);
+            window.open(url, "_blank");
+            // Revoke after a minute — enough time for the tab to load
+            setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+        } catch (err) {
+            console.error("View failed:", err);
+        } finally {
+            setViewing(null);
+        }
+    };
+
     const formatSize = (bytes) => {
         if (bytes > 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
         return `${(bytes / 1024).toFixed(0)} KB`;
@@ -139,11 +154,18 @@ function MaterialsList() {
                                 <p style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>
                                     {formatSize(m.fileSize)} · {m.downloads} downloads
                                 </p>
-                                <button onClick={() => handleDownload(m._id, m.title)}
-                                    disabled={downloading === m._id}
-                                    style={{ padding: "7px 16px", borderRadius: "var(--border-radius-md)", background: "#1D9E75", color: "white", border: "none", fontSize: 12, fontWeight: 500, cursor: "pointer", opacity: downloading === m._id ? 0.6 : 1 }}>
-                                    {downloading === m._id ? "..." : "Download"}
-                                </button>
+                                <div style={{ display: "flex", gap: 6 }}>
+                                    <button onClick={() => handleView(m._id)}
+                                        disabled={viewing === m._id}
+                                        style={{ padding: "7px 12px", borderRadius: "var(--border-radius-md)", background: "var(--color-background-secondary)", color: "var(--color-text-primary)", border: "0.5px solid var(--color-border-secondary)", fontSize: 12, fontWeight: 500, cursor: "pointer", opacity: viewing === m._id ? 0.6 : 1 }}>
+                                        {viewing === m._id ? "..." : "View"}
+                                    </button>
+                                    <button onClick={() => handleDownload(m._id, m.title)}
+                                        disabled={downloading === m._id}
+                                        style={{ padding: "7px 16px", borderRadius: "var(--border-radius-md)", background: "#1D9E75", color: "white", border: "none", fontSize: 12, fontWeight: 500, cursor: "pointer", opacity: downloading === m._id ? 0.6 : 1 }}>
+                                        {downloading === m._id ? "..." : "Download"}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ))}
