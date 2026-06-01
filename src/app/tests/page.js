@@ -3,7 +3,10 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
-import ProtectedRoute from "../components/ProtectedRoute";
+import axios from "axios";
+
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const publicApi = axios.create({ baseURL: API }); // token-less client for public browsing
 
 const FALLBACK_SUBJECTS = [
   { name: "Dravyaguna", icon: "🌿", color: { bg: "#E1F5EE", text: "#0F6E56", border: "#9FE1CB" } },
@@ -26,11 +29,7 @@ const DEFAULT_COLOR = {
 };
 
 export default function TestsPage() {
-  return (
-    <ProtectedRoute>
-      <TestListing />
-    </ProtectedRoute>
-  );
+  return <TestListing />;
 }
 
 function ChapterwiseBanner({ onNavigate }) {
@@ -83,7 +82,7 @@ function ChapterwiseBanner({ onNavigate }) {
 }
 
 function TestListing() {
-  const { authAxios } = useAuth();
+  const { user, authAxios } = useAuth();
   const router = useRouter();
 
   const [bySubject, setBySubject] = useState({});
@@ -96,15 +95,23 @@ function TestListing() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [testsRes, attemptsRes, subjectsRes] = await Promise.all([
-          authAxios.get("/tests"),
-          authAxios.get("/tests/my-attempts"),
-          authAxios.get("/subjects"),
-        ]);
+        // Tests + subjects are public; attempts are per-user (only fetch when logged in).
+        const requests = [
+          publicApi.get("/tests"),
+          publicApi.get("/subjects"),
+        ];
+        const attemptsReq = user ? authAxios.get("/tests/my-attempts") : null;
 
+        const [testsRes, subjectsRes] = await Promise.all(requests);
         setBySubject(testsRes.data.bySubject || {});
-        setAttempts(attemptsRes.data.attempts || []);
         setSubjects(subjectsRes.data.subjects || []);
+
+        if (attemptsReq) {
+          const attemptsRes = await attemptsReq;
+          setAttempts(attemptsRes.data.attempts || []);
+        } else {
+          setAttempts([]);
+        }
       } catch (e) {
         console.error(e);
       } finally {
@@ -113,7 +120,16 @@ function TestListing() {
     };
 
     load();
-  }, []);
+  }, [user]);
+
+  // Start a test: free → straight in; paid while logged out → signup.
+  const startTest = (test) => {
+    if (test.type !== "free" && !user) {
+      router.push(`/signup?next=/tests/${test._id}`);
+      return;
+    }
+    router.push(`/tests/${test._id}`);
+  };
 
   const subjectMetaList =
     subjects.length > 0
@@ -408,7 +424,8 @@ function TestListing() {
                         bg="#dcfce7"
                         tests={activeData.free}
                         attemptMap={attemptMap}
-                        router={router}
+                        onStart={startTest}
+                        user={user}
                       />
                     )}
 
@@ -420,7 +437,8 @@ function TestListing() {
                         bg="#dbeafe"
                         tests={activeData.paid}
                         attemptMap={attemptMap}
-                        router={router}
+                        onStart={startTest}
+                        user={user}
                       />
                     )}
                   </div>
@@ -588,7 +606,7 @@ function TestListing() {
   );
 }
 
-function TestSection({ title, count, color, bg, tests, attemptMap, router }) {
+function TestSection({ title, count, color, bg, tests, attemptMap, onStart, user }) {
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
@@ -612,7 +630,8 @@ function TestSection({ title, count, color, bg, tests, attemptMap, router }) {
             key={test._id}
             test={test}
             attempt={attemptMap[test._id]}
-            onStart={() => router.push(`/tests/${test._id}`)}
+            locked={test.type !== "free" && !user}
+            onStart={() => onStart(test)}
           />
         ))}
       </div>
@@ -620,7 +639,7 @@ function TestSection({ title, count, color, bg, tests, attemptMap, router }) {
   );
 }
 
-function TestCard({ test, attempt, onStart }) {
+function TestCard({ test, attempt, onStart, locked }) {
   const isFree = test.type === "free";
 
   return (
@@ -732,7 +751,7 @@ function TestCard({ test, attempt, onStart }) {
             whiteSpace: "nowrap",
           }}
         >
-          {attempt ? "Retake" : "Start"} →
+          {locked ? "🔒 Sign up" : attempt ? "Retake" : "Start"} →
         </button>
       </div>
     </div>
