@@ -1,20 +1,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import axios from "axios";
-import ProtectedRoute from "../components/ProtectedRoute";
+import { useAuth } from "../context/AuthContext";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 export default function LecturesPage() {
-    return <ProtectedRoute><LecturesBrowser /></ProtectedRoute>;
+    return <LecturesBrowser />;
 }
 
 function LecturesBrowser() {
+    const { user } = useAuth();
+    const router = useRouter();
     const [grouped, setGrouped] = useState({});
     const [loading, setLoading] = useState(true);
     const [activeSubject, setActiveSubject] = useState(null);
     const [activeLecture, setActiveLecture] = useState(null);
+    const [gated, setGated] = useState(null); // paid lecture clicked while logged out
     const [search, setSearch] = useState("");
 
     useEffect(() => {
@@ -26,10 +30,18 @@ function LecturesBrowser() {
         }).catch(console.error).finally(() => setLoading(false));
     }, []);
 
+    // Open a lecture, or gate it if it's paid and the user is logged out
+    const openLecture = (l) => {
+        if (!l.isFree && !user) {
+            setGated(l);
+        } else {
+            setActiveLecture(l);
+        }
+    };
+
     const subjects = Object.keys(grouped);
     const topics = activeSubject ? grouped[activeSubject] || {} : {};
 
-    // Flatten all lectures for search
     const allLectures = Object.values(grouped).flatMap(topics =>
         Object.values(topics).flat()
     );
@@ -79,7 +91,7 @@ function LecturesBrowser() {
                 <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 24px" }}>
                     <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 16 }}>{searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for "{search}"</p>
                     <div className="lec-grid">
-                        {searchResults.map(l => <LectureCard key={l._id} l={l} onPlay={() => setActiveLecture(l)} />)}
+                        {searchResults.map(l => <LectureCard key={l._id} l={l} locked={!l.isFree && !user} onPlay={() => openLecture(l)} />)}
                     </div>
                     {searchResults.length === 0 && <p style={{ color: "#9ca3af", textAlign: "center", padding: 40 }}>No lectures found for "{search}"</p>}
                 </div>
@@ -120,7 +132,7 @@ function LecturesBrowser() {
                                     <span style={{ fontSize: 10, color: "#9ca3af", flexShrink: 0 }}>{lectures.length} lectures</span>
                                 </div>
                                 <div className="lec-grid">
-                                    {lectures.map(l => <LectureCard key={l._id} l={l} onPlay={() => setActiveLecture(l)} />)}
+                                    {lectures.map(l => <LectureCard key={l._id} l={l} locked={!l.isFree && !user} onPlay={() => openLecture(l)} />)}
                                 </div>
                             </div>
                         ))}
@@ -155,6 +167,30 @@ function LecturesBrowser() {
                 </div>
             )}
 
+            {/* Premium gate modal — shown when a logged-out user clicks a PRO lecture */}
+            {gated && (
+                <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+                    onClick={e => e.target === e.currentTarget && setGated(null)}>
+                    <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 380, padding: 28, textAlign: "center", boxShadow: "0 32px 80px rgba(0,0,0,0.3)" }}>
+                        <div style={{ fontSize: 36, marginBottom: 12 }}>🔒</div>
+                        <p style={{ fontSize: 16, fontWeight: 800, color: "#111827", margin: "0 0 6px" }}>This is a PRO lecture</p>
+                        <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 20px", lineHeight: 1.5 }}>
+                            “{gated.title}” is premium content. Create a free account to unlock it.
+                        </p>
+                        <div style={{ display: "flex", gap: 10 }}>
+                            <button onClick={() => setGated(null)}
+                                style={{ flex: 1, padding: "11px 0", borderRadius: 10, border: "1px solid #e5e7eb", background: "#fff", color: "#374151", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                                Maybe later
+                            </button>
+                            <button onClick={() => router.push("/signup")}
+                                style={{ flex: 1, padding: "11px 0", borderRadius: 10, border: "none", background: "#00256e", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                                Sign up free
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <style>{`
                 .lec-grid {
                     display: grid;
@@ -171,7 +207,7 @@ function LecturesBrowser() {
     );
 }
 
-function LectureCard({ l, onPlay }) {
+function LectureCard({ l, onPlay, locked }) {
     return (
         <div onClick={onPlay} style={{
             background: "#fff", borderRadius: 12, overflow: "hidden",
@@ -188,10 +224,10 @@ function LectureCard({ l, onPlay }) {
                 ) : (
                     <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40 }}>🎬</div>
                 )}
-                {/* Play overlay */}
+                {/* Play / lock overlay */}
                 <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.3)", opacity: 0, transition: "opacity 0.2s" }}
                     className="play-overlay">
-                    <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,0.9)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>▶</div>
+                    <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,0.9)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{locked ? "🔒" : "▶"}</div>
                 </div>
                 {/* Duration badge */}
                 {l.duration > 0 && (
@@ -199,7 +235,7 @@ function LectureCard({ l, onPlay }) {
                         {Math.floor(l.duration / 60)}:{String(l.duration % 60).padStart(2, "0")}
                     </span>
                 )}
-                {/* Free badge */}
+                {/* Free / Pro badge */}
                 <span style={{ position: "absolute", top: 8, left: 8, fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: l.isFree ? "#d1fae5" : "#fef3c7", color: l.isFree ? "#065f46" : "#92400e" }}>
                     {l.isFree ? "FREE" : "PRO"}
                 </span>

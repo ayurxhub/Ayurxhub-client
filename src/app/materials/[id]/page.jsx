@@ -2,15 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import axios from "axios";
 import { useAuth } from "../../context/AuthContext";
-import ProtectedRoute from "../../components/ProtectedRoute";
+
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const publicApi = axios.create({ baseURL: API });
+
+const isPaidItem = (m) => m?.isPaid === true || m?.isFree === false;
 
 export default function MaterialDetailPage({ params }) {
-    return <ProtectedRoute><MaterialDetail id={params.id} /></ProtectedRoute>;
+    return <MaterialDetail id={params.id} />;
 }
 
 function MaterialDetail({ id }) {
-    const { authAxios } = useAuth();
+    const { user, authAxios } = useAuth();
     const router = useRouter();
     const [material, setMaterial] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -24,7 +29,7 @@ function MaterialDetail({ id }) {
     const fetchMaterial = async () => {
         setLoading(true);
         try {
-            const res = await authAxios.get(`/materials/${id}`);
+            const res = await publicApi.get(`/materials/${id}`);
             setMaterial(res.data.material);
         } catch (err) {
             if (err.response?.status === 404) setNotFound(true);
@@ -34,11 +39,17 @@ function MaterialDetail({ id }) {
         }
     };
 
+    const client = () => (user ? authAxios : publicApi);
+
     const handleView = async () => {
+        if (isPaidItem(material) && !user) {
+            router.push(`/signup?next=/materials/${id}`);
+            return;
+        }
         setViewing(true);
         setDlError("");
         try {
-            const res = await authAxios.get(`/materials/${id}/download?inline=true&t=${Date.now()}`, {
+            const res = await client().get(`/materials/${id}/download?inline=true&t=${Date.now()}`, {
                 responseType: "blob",
             });
             const blob = new Blob([res.data], { type: "application/pdf" });
@@ -53,11 +64,14 @@ function MaterialDetail({ id }) {
     };
 
     const handleDownload = async () => {
+        if (isPaidItem(material) && !user) {
+            router.push(`/signup?next=/materials/${id}`);
+            return;
+        }
         setDownloading(true);
         setDlError("");
         try {
-            // Backend proxies the file directly — request it as a blob
-            const res = await authAxios.get(`/materials/${id}/download?t=${Date.now()}`, {
+            const res = await client().get(`/materials/${id}/download?t=${Date.now()}`, {
                 responseType: "blob",
             });
             const blob = new Blob([res.data], { type: "application/pdf" });
@@ -106,6 +120,8 @@ function MaterialDetail({ id }) {
     if (!material) return null;
 
     const m = material;
+    const paid = isPaidItem(m);
+    const locked = paid && !user;
 
     return (
         <div style={{ padding: "24px", background: "var(--color-background-tertiary)", minHeight: "100vh" }}>
@@ -136,7 +152,9 @@ function MaterialDetail({ id }) {
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
                         <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "#E6F1FB", color: "#185FA5", fontWeight: 500 }}>{m.category}</span>
                         <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "var(--color-background-secondary)", color: "var(--color-text-tertiary)" }}>{m.language}</span>
-                        <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "#E1F5EE", color: "#0F6E56", fontWeight: 500 }}>Free</span>
+                        <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: paid ? "#fef3c7" : "#E1F5EE", color: paid ? "#92400e" : "#0F6E56", fontWeight: 500 }}>
+                            {paid ? "PRO" : "Free"}
+                        </span>
                         {m.isFeatured && <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "#fef9c3", color: "#92400e", fontWeight: 500 }}>⭐ Featured</span>}
                     </div>
 
@@ -173,6 +191,13 @@ function MaterialDetail({ id }) {
                         </div>
                     )}
 
+                    {/* Locked notice */}
+                    {locked && (
+                        <p style={{ fontSize: 12, color: "#92400e", background: "#fef3c7", padding: "8px 12px", borderRadius: 8, marginBottom: 12 }}>
+                            🔒 This is premium content. Sign up free to view or download it.
+                        </p>
+                    )}
+
                     {/* Download button */}
                     {dlError && (
                         <p style={{ fontSize: 12, color: "#dc2626", marginBottom: 10 }}>{dlError}</p>
@@ -180,11 +205,11 @@ function MaterialDetail({ id }) {
                     <div style={{ display: "flex", gap: 10 }}>
                         <button onClick={handleView} disabled={viewing}
                             style={{ flex: 1, padding: "11px 0", borderRadius: "var(--border-radius-md)", background: "var(--color-background-secondary)", color: "var(--color-text-primary)", border: "0.5px solid var(--color-border-secondary)", fontSize: 14, fontWeight: 600, cursor: viewing ? "not-allowed" : "pointer", opacity: viewing ? 0.7 : 1, fontFamily: "var(--font-sans)", transition: "opacity 0.15s" }}>
-                            {viewing ? "Opening..." : "👁 View PDF"}
+                            {viewing ? "Opening..." : (locked ? "🔒 View PDF" : "👁 View PDF")}
                         </button>
                         <button onClick={handleDownload} disabled={downloading}
                             style={{ flex: 1, padding: "11px 0", borderRadius: "var(--border-radius-md)", background: "#1D9E75", color: "#fff", border: "none", fontSize: 14, fontWeight: 600, cursor: downloading ? "not-allowed" : "pointer", opacity: downloading ? 0.7 : 1, fontFamily: "var(--font-sans)", transition: "opacity 0.15s" }}>
-                            {downloading ? "Preparing..." : "⬇ Download PDF"}
+                            {downloading ? "Preparing..." : (locked ? "🔒 Sign up to Download" : "⬇ Download PDF")}
                         </button>
                     </div>
                 </div>

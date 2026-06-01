@@ -1,20 +1,28 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import axios from "axios";
 import { useAuth } from "../context/AuthContext";
-import ProtectedRoute from "../components/ProtectedRoute";
+
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const publicApi = axios.create({ baseURL: API }); // token-less client for public browsing
 
 const CATEGORIES = [
     "All", "Classical Texts", "Pharmacology", "Anatomy", "Diagnosis",
     "Panchakarma", "Nutrition", "Research", "Clinical", "Other"
 ];
 
+// A material is "paid" if explicitly marked isPaid, or isFree === false.
+const isPaidItem = (m) => m?.isPaid === true || m?.isFree === false;
+
 export default function MaterialsPage() {
-    return <ProtectedRoute><MaterialsList /></ProtectedRoute>;
+    return <MaterialsList />;
 }
 
 function MaterialsList() {
-    const { authAxios } = useAuth();
+    const { user, authAxios } = useAuth();
+    const router = useRouter();
     const [materials, setMaterials] = useState([]);
     const [loading, setLoading] = useState(true);
     const [category, setCategory] = useState("All");
@@ -29,7 +37,7 @@ function MaterialsList() {
         try {
             const params = new URLSearchParams();
             if (category !== "All") params.append("category", category);
-            const res = await authAxios.get(`/materials?${params}`);
+            const res = await publicApi.get(`/materials?${params}`);
             setMaterials(res.data.materials);
         } catch (err) {
             console.error(err);
@@ -37,18 +45,25 @@ function MaterialsList() {
             setLoading(false);
         }
     };
-    const handleDownload = async (id, title) => {
-        setDownloading(id);
+
+    // Logged-in users get the authed client (carries token); guests get the public one.
+    const client = () => (user ? authAxios : publicApi);
+
+    const handleDownload = async (m) => {
+        if (isPaidItem(m) && !user) {
+            router.push(`/signup?next=/materials`);
+            return;
+        }
+        setDownloading(m._id);
         try {
-            // Backend now proxies the file directly — request it as a blob
-            const res = await authAxios.get(`/materials/${id}/download?t=${Date.now()}`, {
+            const res = await client().get(`/materials/${m._id}/download?t=${Date.now()}`, {
                 responseType: "blob",
             });
             const blob = new Blob([res.data], { type: "application/pdf" });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `${title || "material"}.pdf`;
+            a.download = `${m.title || "material"}.pdf`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -59,16 +74,20 @@ function MaterialsList() {
             setDownloading(null);
         }
     };
-    const handleView = async (id) => {
-        setViewing(id);
+
+    const handleView = async (m) => {
+        if (isPaidItem(m) && !user) {
+            router.push(`/signup?next=/materials`);
+            return;
+        }
+        setViewing(m._id);
         try {
-            const res = await authAxios.get(`/materials/${id}/download?inline=true&t=${Date.now()}`, {
+            const res = await client().get(`/materials/${m._id}/download?inline=true&t=${Date.now()}`, {
                 responseType: "blob",
             });
             const blob = new Blob([res.data], { type: "application/pdf" });
             const url = window.URL.createObjectURL(blob);
             window.open(url, "_blank");
-            // Revoke after a minute — enough time for the tab to load
             setTimeout(() => window.URL.revokeObjectURL(url), 60000);
         } catch (err) {
             console.error("View failed:", err);
@@ -127,48 +146,54 @@ function MaterialsList() {
                 </div>
             ) : (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
-                    {filtered.map((m) => (
-                        <div key={m._id} style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: "var(--border-radius-lg)", padding: 20, display: "flex", flexDirection: "column" }}>
+                    {filtered.map((m) => {
+                        const paid = isPaidItem(m);
+                        const locked = paid && !user;
+                        return (
+                            <div key={m._id} style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: "var(--border-radius-lg)", padding: 20, display: "flex", flexDirection: "column" }}>
 
-                            {/* PDF Icon */}
-                            <div style={{ width: 48, height: 48, borderRadius: "var(--border-radius-md)", background: "#FCEBEB", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, fontSize: 22 }}>
-                                📄
-                            </div>
+                                {/* PDF Icon */}
+                                <div style={{ width: 48, height: 48, borderRadius: "var(--border-radius-md)", background: "#FCEBEB", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, fontSize: 22 }}>
+                                    📄
+                                </div>
 
-                            <p style={{ fontSize: 14, fontWeight: 500, color: "var(--color-text-primary)", marginBottom: 4, lineHeight: 1.4 }}>{m.title}</p>
-                            {m.author && <p style={{ fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 8 }}>by {m.author}</p>}
+                                <p style={{ fontSize: 14, fontWeight: 500, color: "var(--color-text-primary)", marginBottom: 4, lineHeight: 1.4 }}>{m.title}</p>
+                                {m.author && <p style={{ fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 8 }}>by {m.author}</p>}
 
-                            {m.description && (
-                                <p style={{ fontSize: 12, color: "var(--color-text-secondary)", lineHeight: 1.6, marginBottom: 12, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                                    {m.description}
-                                </p>
-                            )}
+                                {m.description && (
+                                    <p style={{ fontSize: 12, color: "var(--color-text-secondary)", lineHeight: 1.6, marginBottom: 12, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                                        {m.description}
+                                    </p>
+                                )}
 
-                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-                                <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: "#E6F1FB", color: "#185FA5" }}>{m.category}</span>
-                                <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: "var(--color-background-secondary)", color: "var(--color-text-tertiary)" }}>{m.language}</span>
-                                <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: "#E1F5EE", color: "#0F6E56" }}>Free</span>
-                            </div>
+                                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: "#E6F1FB", color: "#185FA5" }}>{m.category}</span>
+                                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: "var(--color-background-secondary)", color: "var(--color-text-tertiary)" }}>{m.language}</span>
+                                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: paid ? "#fef3c7" : "#E1F5EE", color: paid ? "#92400e" : "#0F6E56" }}>
+                                        {paid ? "PRO" : "Free"}
+                                    </span>
+                                </div>
 
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto", paddingTop: 12, borderTop: "0.5px solid var(--color-border-tertiary)" }}>
-                                <p style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>
-                                    {formatSize(m.fileSize)} · {m.downloads} downloads
-                                </p>
-                                <div style={{ display: "flex", gap: 6 }}>
-                                    <button onClick={() => handleView(m._id)}
-                                        disabled={viewing === m._id}
-                                        style={{ padding: "7px 12px", borderRadius: "var(--border-radius-md)", background: "var(--color-background-secondary)", color: "var(--color-text-primary)", border: "0.5px solid var(--color-border-secondary)", fontSize: 12, fontWeight: 500, cursor: "pointer", opacity: viewing === m._id ? 0.6 : 1 }}>
-                                        {viewing === m._id ? "..." : "View"}
-                                    </button>
-                                    <button onClick={() => handleDownload(m._id, m.title)}
-                                        disabled={downloading === m._id}
-                                        style={{ padding: "7px 16px", borderRadius: "var(--border-radius-md)", background: "#1D9E75", color: "white", border: "none", fontSize: 12, fontWeight: 500, cursor: "pointer", opacity: downloading === m._id ? 0.6 : 1 }}>
-                                        {downloading === m._id ? "..." : "Download"}
-                                    </button>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto", paddingTop: 12, borderTop: "0.5px solid var(--color-border-tertiary)" }}>
+                                    <p style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>
+                                        {formatSize(m.fileSize)} · {m.downloads} downloads
+                                    </p>
+                                    <div style={{ display: "flex", gap: 6 }}>
+                                        <button onClick={() => handleView(m)}
+                                            disabled={viewing === m._id}
+                                            style={{ padding: "7px 12px", borderRadius: "var(--border-radius-md)", background: "var(--color-background-secondary)", color: "var(--color-text-primary)", border: "0.5px solid var(--color-border-secondary)", fontSize: 12, fontWeight: 500, cursor: "pointer", opacity: viewing === m._id ? 0.6 : 1 }}>
+                                            {viewing === m._id ? "..." : (locked ? "🔒 View" : "View")}
+                                        </button>
+                                        <button onClick={() => handleDownload(m)}
+                                            disabled={downloading === m._id}
+                                            style={{ padding: "7px 16px", borderRadius: "var(--border-radius-md)", background: "#1D9E75", color: "white", border: "none", fontSize: 12, fontWeight: 500, cursor: "pointer", opacity: downloading === m._id ? 0.6 : 1 }}>
+                                            {downloading === m._id ? "..." : (locked ? "🔒 Unlock" : "Download")}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 
