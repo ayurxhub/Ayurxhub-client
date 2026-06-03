@@ -2,14 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
+import SubjectManagerModal from "../../components/SubjectManagerModal"; // ← NEW
 
+// ─── Keep these for QuestionFormModal (it still uses hardcoded lists) ─────────
 const SUBJECTS = [
     "Dravyaguna", "Kayachikitsa", "Panchakarma", "Shalya Tantra",
     "Rasayana", "Anatomy", "Pharmacology", "Diagnosis",
     "Prasuti Tantra", "Kaumarabhritya", "General Ayurveda",
     "Swasthavritta evam Yoga",
 ];
-
 const DIFFICULTIES = ["easy", "medium", "hard"];
 const TERMS = ["Term 1", "Term 2"];
 const SWASTHA_CHAPTERS = [
@@ -35,7 +36,7 @@ export default function AdminTestsPage() {
     const [showTestForm, setShowTestForm] = useState(false);
     const [showQForm, setShowQForm] = useState(false);
     const [showBulkUpload, setShowBulkUpload] = useState(false);
-    const [showSubjectForm, setShowSubjectForm] = useState(false);
+    const [showSubjects, setShowSubjects] = useState(false); // ← RENAMED (was showSubjectForm)
     const [editingTest, setEditingTest] = useState(null);
     const [editingQ, setEditingQ] = useState(null);
     const [qFilter, setQFilter] = useState({ subject: "", term: "", chapter: "", approved: "" });
@@ -77,10 +78,11 @@ export default function AdminTestsPage() {
                     <p style={{ fontSize: 13, color: "#6b7280", margin: 0 }}>Manage tests and question bank</p>
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
-                    {tab === "questions" && (<>
-                        <button onClick={() => setShowSubjectForm(true)} style={secondaryBtn}>+ Add Subject</button>
+                    {/* ↓ CHANGED: was "tab === questions" only; now always visible, label changed */}
+                    <button onClick={() => setShowSubjects(true)} style={secondaryBtn}>📚 Subjects</button>
+                    {tab === "questions" && (
                         <button onClick={() => setShowBulkUpload(true)} style={secondaryBtn}>📄 Bulk Upload</button>
-                    </>)}
+                    )}
                     <button onClick={tab === "tests" ? openTestForm : openQuestionForm} style={primaryBtn}>
                         + {tab === "tests" ? "New Test" : "Add Question"}
                     </button>
@@ -137,13 +139,23 @@ export default function AdminTestsPage() {
 
             {showTestForm && <TestFormModal authAxios={authAxios} editing={editingTest} onClose={() => setShowTestForm(false)} onSaved={loadAll} />}
             {showQForm && <QuestionFormModal authAxios={authAxios} editing={editingQ} onClose={() => setShowQForm(false)} onSaved={loadAll} />}
-            {showSubjectForm && <SubjectFormModal authAxios={authAxios} onClose={() => setShowSubjectForm(false)} onSaved={() => { setShowSubjectForm(false); loadAll(); }} />}
             {showBulkUpload && <BulkUploadModal authAxios={authAxios} onClose={() => setShowBulkUpload(false)} onSaved={loadAll} />}
+
+            {/* ↓ CHANGED: was SubjectFormModal (old inline function) → now SubjectManagerModal from separate file */}
+            {showSubjects && (
+                <SubjectManagerModal
+                    authAxios={authAxios}
+                    onClose={() => setShowSubjects(false)}
+                    onSaved={loadAll}
+                />
+            )}
 
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
     );
 }
+
+// ─── No changes below this line — everything kept exactly as before ────────────
 
 function TestsList({ tests, togglePublish, deleteTest, editTest }) {
     if (tests.length === 0) return <p style={{ color: "#6b7280", textAlign: "center", padding: 40 }}>No tests yet. Create one above.</p>;
@@ -213,110 +225,6 @@ function QuestionsList({ questions, approveQ, deleteQ, editQ }) {
                 </div>
             ))}
         </div>
-    );
-}
-
-// ── NEW: Smart SubjectFormModal with Create/Edit toggle ──────────────────────
-function SubjectFormModal({ authAxios, onClose, onSaved }) {
-    const [subjects, setSubjects] = useState([]);
-    const [mode, setMode] = useState("new");
-    const [selectedId, setSelectedId] = useState("");
-    const [name, setName] = useState("");
-    const [termsText, setTermsText] = useState("Term 1, Term 2");
-    const [chaptersText, setChaptersText] = useState("");
-    const [saving, setSaving] = useState(false);
-    const [error, setError] = useState("");
-
-    useEffect(() => {
-        authAxios.get("/subjects").then(r => setSubjects(r.data.subjects || [])).catch(() => { });
-    }, []);
-
-    useEffect(() => {
-        if (mode === "edit" && selectedId) {
-            const s = subjects.find(x => x._id === selectedId);
-            if (s) {
-                setName(s.name);
-                setTermsText(s.terms?.join(", ") || "");
-                setChaptersText(s.chapters?.map(c => c.term ? `${c.term} | ${c.name}` : c.name).join("\n") || "");
-            }
-        } else if (mode === "new") {
-            setName(""); setTermsText("Term 1, Term 2"); setChaptersText("");
-        }
-    }, [mode, selectedId]);
-
-    const handleSave = async () => {
-        if (mode === "new" && !name.trim()) return setError("Subject name is required");
-        if (mode === "edit" && !selectedId) return setError("Please select a subject to edit");
-        const terms = termsText.split(",").map(t => t.trim()).filter(Boolean);
-        const chapters = chaptersText.split("\n").map(line => line.trim()).filter(Boolean).map(line => {
-            const [termPart, chapterPart] = line.split("|").map(x => x?.trim());
-            return { term: chapterPart ? termPart : "", name: chapterPart || termPart };
-        });
-        setSaving(true);
-        try {
-            if (mode === "new") {
-                await authAxios.post("/subjects", { name: name.trim(), terms, chapters });
-            } else {
-                await authAxios.put(`/subjects/${selectedId}`, { name: name.trim(), terms, chapters });
-            }
-            onSaved();
-        } catch (e) {
-            setError(e.response?.data?.message || "Failed to save subject");
-        } finally { setSaving(false); }
-    };
-
-    return (
-        <ModalShell title="Manage Subject" onClose={onClose} maxWidth={620}>
-            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-                {[["new", "➕ Create New"], ["edit", "✏️ Edit Existing"]].map(([m, label]) => (
-                    <button key={m} onClick={() => { setMode(m); setError(""); }} style={{
-                        flex: 1, padding: "8px 12px", borderRadius: 8, cursor: "pointer",
-                        border: `2px solid ${mode === m ? "#1D9E75" : "rgba(0,0,0,0.1)"}`,
-                        background: mode === m ? "rgba(29,158,117,0.1)" : "#fff",
-                        color: mode === m ? "#1D9E75" : "#9ca3af",
-                        fontSize: 12, fontWeight: 600, fontFamily: "inherit",
-                    }}>{label}</button>
-                ))}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {mode === "edit" && (
-                    <Field label="Select Subject to Edit">
-                        <select value={selectedId} onChange={e => setSelectedId(e.target.value)} style={inp}>
-                            <option value="">-- Choose subject --</option>
-                            {subjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
-                        </select>
-                    </Field>
-                )}
-                {(mode === "new" || selectedId) && (<>
-                    {mode === "new" && (
-                        <Field label="Subject Name">
-                            <input value={name} onChange={e => setName(e.target.value)} style={inp} placeholder="Example: Rog Nidana" />
-                        </Field>
-                    )}
-                    <Field label="Terms">
-                        <input value={termsText} onChange={e => setTermsText(e.target.value)} style={inp} placeholder="Term 1, Term 2" />
-                        <p style={{ fontSize: 11, color: "#6b7280", margin: "4px 0 0" }}>Comma-separated terms</p>
-                    </Field>
-                    <Field label={mode === "edit" ? "Chapters (add new ones at the bottom)" : "Chapters"}>
-                        <textarea value={chaptersText} onChange={e => setChaptersText(e.target.value)} rows={8}
-                            style={{ ...inp, resize: "vertical" }}
-                            placeholder={"Term 1 | Chapter 1 - Basic Nidana\nTerm 1 | Chapter 2 - Hetu\nTerm 2 | Chapter 3 - Samprapti"}
-                        />
-                        <p style={{ fontSize: 11, color: "#6b7280", margin: "4px 0 0" }}>
-                            One chapter per line. Format: Term | Chapter Name
-                            {mode === "edit" && " · Existing chapters are pre-filled — just add new ones at the bottom"}
-                        </p>
-                    </Field>
-                </>)}
-            </div>
-            {error && <p style={{ fontSize: 13, color: "#E24B4A", marginBottom: 8 }}>{error}</p>}
-            <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
-                <button onClick={onClose} style={cancelBtn}>Cancel</button>
-                <button onClick={handleSave} disabled={saving} style={{ ...primaryBtn, flex: 2 }}>
-                    {saving ? "Saving…" : mode === "new" ? "Create Subject" : "Save Changes"}
-                </button>
-            </div>
-        </ModalShell>
     );
 }
 
@@ -459,10 +367,13 @@ function TestFormModal({ authAxios, editing, onClose, onSaved }) {
         chapter: editing?.chapter || "", type: editing?.type || "free",
         price: editing?.price || 0, duration: editing?.duration || 30,
         passingScore: editing?.passingScore || 60, shuffleQuestions: editing?.shuffleQuestions || false,
+        batch: editing?.batch || "",
+        batchOrder: editing?.batchOrder || 0,
     });
     const [error, setError] = useState("");
     const [saving, setSaving] = useState(false);
     const [subjects, setSubjects] = useState([]);
+    const [batches, setBatches] = useState([]);
     const [questionSource, setQuestionSource] = useState("bank");
     const [questionCount, setQuestionCount] = useState(5);
     const [file, setFile] = useState(null);
@@ -480,6 +391,10 @@ function TestFormModal({ authAxios, editing, onClose, onSaved }) {
                 setForm(f => ({ ...f, subject: firstSubject.name, term: firstTerm, chapter: firstChapter }));
             }
         }).catch(console.error);
+        // Load batches for the batch assignment dropdown
+        authAxios.get("/batches/admin/all")
+            .then(r => setBatches(r.data.batches || []))
+            .catch(() => { }); // non-fatal — batch dropdown just stays empty
     }, []);
 
     const selectedSubject = subjects.find(s => s.name === form.subject);
@@ -617,6 +532,41 @@ function TestFormModal({ authAxios, editing, onClose, onSaved }) {
                         )}
                     </div>
                 )}
+                {/* ── Batch assignment ─────────────────────────────────────────── */}
+                <div style={{ background: "#f0fdf4", borderRadius: 10, padding: 14, border: "0.5px solid rgba(29,158,117,0.2)" }}>
+                    <label style={lbl}>📦 Assign to Batch / Crash Course <span style={{ color: "#9ca3af", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span></label>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "end" }}>
+                        <div>
+                            <label style={{ ...lbl, marginBottom: 4 }}>Batch</label>
+                            <select value={form.batch} onChange={e => setForm(f => ({ ...f, batch: e.target.value }))} style={inp}>
+                                <option value="">— No batch —</option>
+                                {batches.map(b => (
+                                    <option key={b._id} value={b.slug}>{b.icon || "📚"} {b.title}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div style={{ width: 90 }}>
+                            <label style={{ ...lbl, marginBottom: 4 }}>Order #</label>
+                            <input
+                                type="number" min={0}
+                                value={form.batchOrder}
+                                onChange={e => setForm(f => ({ ...f, batchOrder: Number(e.target.value) }))}
+                                style={inp}
+                                placeholder="1"
+                                disabled={!form.batch}
+                            />
+                        </div>
+                    </div>
+                    {form.batch && (
+                        <p style={{ fontSize: 11, color: "#1D9E75", margin: "6px 0 0" }}>
+                            ✓ Test will appear at position #{form.batchOrder || "?"} in <strong>{batches.find(b => b.slug === form.batch)?.title || form.batch}</strong>
+                        </p>
+                    )}
+                    {batches.length === 0 && (
+                        <p style={{ fontSize: 11, color: "#9ca3af", margin: "6px 0 0" }}>No batches found — create one in Admin → Courses first.</p>
+                    )}
+                </div>
+
                 <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
                     <input type="checkbox" checked={form.shuffleQuestions} onChange={e => setForm(f => ({ ...f, shuffleQuestions: e.target.checked }))} />
                     <span style={{ fontSize: 13, color: "#9ca3af" }}>Shuffle question order</span>

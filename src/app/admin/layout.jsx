@@ -11,6 +11,7 @@ const adminLinks = [
     { href: "/admin/experts", icon: "verified_user", label: "Experts" },
     { href: "/admin/materials", icon: "menu_book", label: "Materials" },
     { href: "/admin/tests", icon: "quiz", label: "Test Series" },
+    { href: "/admin/courses", icon: "school", label: "Exam Prep" },
     { href: "/admin/blogs", icon: "article", label: "Blog Posts" },
     { href: "/admin/announcements", icon: "campaign", label: "Announcements" },  // ← add this
     { href: "/admin/lectures", icon: "play_circle", label: "Lectures" },

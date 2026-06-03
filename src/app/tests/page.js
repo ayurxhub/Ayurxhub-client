@@ -324,58 +324,67 @@ function TestListing() {
                 />
               </div>
             ) : !activeSubject ? (
-              <>
-                <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 16 }}>
-                  ← Select a subject to see available tests
-                </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {filteredSubjects.map((s) => {
+                  const data = bySubject[s.name] || { free: [], paid: [] };
+                  const total = data.free.length + data.paid.length;
 
-                <div
-                  className="subject-grid"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fill, minmax(155px, 1fr))",
-                    gap: 12,
-                  }}
-                >
-                  {filteredSubjects.map((s) => {
-                    const data = bySubject[s.name] || { free: [], paid: [] };
-                    const total = data.free.length + data.paid.length;
+                  return (
+                    <button
+                      key={s.name}
+                      onClick={() => setActiveSubject(s.name)}
+                      className="subject-strip"
+                      style={{
+                        background: "linear-gradient(135deg, #00256e 0%, #0a3d8f 55%, #0e4f3b 100%)",
+                        borderRadius: 16,
+                        padding: "20px 24px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 16,
+                        border: "none",
+                        width: "100%",
+                        boxShadow: "0 4px 20px rgba(0,37,110,0.18)",
+                        fontFamily: "inherit",
+                        textAlign: "left",
+                        transition: "transform 0.15s, box-shadow 0.15s",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                        <div style={{ fontSize: 32, lineHeight: 1 }}>{s.icon}</div>
+                        <div>
+                          <p style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: "0 0 4px" }}>
+                            {s.name}
+                          </p>
+                          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", margin: 0 }}>
+                            {total > 0
+                              ? `${data.free.length} free · ${data.paid.length} paid tests`
+                              : "Coming soon"}
+                          </p>
+                        </div>
+                      </div>
 
-                    return (
-                      <button
-                        key={s.name}
-                        onClick={() => setActiveSubject(s.name)}
+                      <div
+                        className="subject-strip-btn"
                         style={{
-                          padding: "20px 16px",
-                          borderRadius: 14,
-                          border: `1px solid ${s.color.border}`,
-                          background: s.color.bg,
-                          cursor: "pointer",
-                          textAlign: "center",
-                          fontFamily: "inherit",
+                          background: "rgba(255,255,255,0.12)",
+                          border: "1px solid rgba(255,255,255,0.2)",
+                          borderRadius: 10,
+                          padding: "8px 18px",
+                          color: "#fff",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          whiteSpace: "nowrap",
+                          flexShrink: 0,
                         }}
                       >
-                        <p style={{ fontSize: 28, margin: "0 0 8px" }}>{s.icon}</p>
-                        <p
-                          style={{
-                            fontSize: 12,
-                            fontWeight: 600,
-                            color: s.color.text,
-                            margin: "0 0 3px",
-                          }}
-                        >
-                          {s.name}
-                        </p>
-                        <p style={{ fontSize: 10, color: s.color.text, opacity: 0.7, margin: 0 }}>
-                          {total > 0
-                            ? `${data.free.length} free · ${data.paid.length} paid`
-                            : "Coming soon"}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
+                        View Tests →
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             ) : (
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
@@ -555,6 +564,16 @@ function TestListing() {
             text-align: center !important;
             box-sizing: border-box !important;
             padding: 11px 18px !important;
+          }
+
+          .subject-strip {
+            padding: 16px 18px !important;
+            border-radius: 13px !important;
+          }
+
+          .subject-strip-btn {
+            padding: 7px 14px !important;
+            font-size: 12px !important;
           }
 
           .subject-grid {

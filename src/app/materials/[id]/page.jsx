@@ -34,60 +34,43 @@ function MaterialDetail({ id }) {
         } catch (err) {
             if (err.response?.status === 404) setNotFound(true);
             else console.error(err);
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
     };
 
     const client = () => (user ? authAxios : publicApi);
 
+    // Backend always returns { url } as JSON — no blobs, no redirects
     const handleView = async () => {
-        if (isPaidItem(material) && !user) {
-            router.push(`/signup?next=/materials/${id}`);
-            return;
-        }
+        if (isPaidItem(material) && !user) { router.push(`/register?next=/materials/${id}`); return; }
         setViewing(true);
         setDlError("");
         try {
-            const res = await client().get(`/materials/${id}/download?inline=true&t=${Date.now()}`, {
-                responseType: "blob",
-            });
-            const blob = new Blob([res.data], { type: "application/pdf" });
-            const url = window.URL.createObjectURL(blob);
-            window.open(url, "_blank");
-            setTimeout(() => window.URL.revokeObjectURL(url), 60000);
-        } catch (err) {
-            setDlError("Could not open PDF. Please try again.");
-        } finally {
-            setViewing(false);
-        }
+            const res = await client().get(`/materials/${id}/download?inline=true`);
+            if (res.data?.url) window.open(res.data.url, "_blank");
+            else setDlError("Could not get file URL.");
+        } catch { setDlError("Could not open PDF. Please try again."); }
+        finally { setViewing(false); }
     };
 
     const handleDownload = async () => {
-        if (isPaidItem(material) && !user) {
-            router.push(`/signup?next=/materials/${id}`);
-            return;
-        }
+        if (isPaidItem(material) && !user) { router.push(`/register?next=/materials/${id}`); return; }
         setDownloading(true);
         setDlError("");
         try {
-            const res = await client().get(`/materials/${id}/download?t=${Date.now()}`, {
-                responseType: "blob",
-            });
-            const blob = new Blob([res.data], { type: "application/pdf" });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `${material?.title || "material"}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-        } catch (err) {
-            setDlError("Download failed. Please try again.");
-        } finally {
-            setDownloading(false);
-        }
+            const res = await client().get(`/materials/${id}/download`);
+            if (res.data?.url) {
+                const a = document.createElement("a");
+                a.href = res.data.url;
+                a.download = res.data.filename || `${material?.title || "material"}.pdf`;
+                a.target = "_blank";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            } else {
+                setDlError("Could not get download URL.");
+            }
+        } catch { setDlError("Download failed. Please try again."); }
+        finally { setDownloading(false); }
     };
 
     const formatSize = (bytes) => {
@@ -96,7 +79,6 @@ function MaterialDetail({ id }) {
         return `${(bytes / 1024).toFixed(0)} KB`;
     };
 
-    // ── Loading ───────────────────────────────────────────────────────────────
     if (loading) return (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
             <div style={{ width: 32, height: 32, borderRadius: "50%", border: "3px solid #1D9E75", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
@@ -104,7 +86,6 @@ function MaterialDetail({ id }) {
         </div>
     );
 
-    // ── Not found ─────────────────────────────────────────────────────────────
     if (notFound) return (
         <div style={{ padding: 24, minHeight: "60vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
             <div style={{ fontSize: 40 }}>📄</div>
@@ -126,18 +107,14 @@ function MaterialDetail({ id }) {
     return (
         <div style={{ padding: "24px", background: "var(--color-background-tertiary)", minHeight: "100vh" }}>
 
-            {/* Back button */}
             <button onClick={() => router.push("/materials")}
                 style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 24, background: "none", border: "none", cursor: "pointer", color: "var(--color-text-secondary)", fontSize: 13, padding: 0, fontFamily: "var(--font-sans)" }}>
                 ← Back to Materials
             </button>
 
             <div style={{ maxWidth: 720, margin: "0 auto" }}>
-
-                {/* Main card */}
                 <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: "var(--border-radius-lg)", padding: "clamp(20px,4vw,32px)", marginBottom: 16 }}>
 
-                    {/* Icon + title row */}
                     <div style={{ display: "flex", gap: 16, alignItems: "flex-start", marginBottom: 20 }}>
                         <div style={{ width: 56, height: 56, borderRadius: "var(--border-radius-md)", background: "#FCEBEB", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 }}>
                             📄
@@ -148,7 +125,6 @@ function MaterialDetail({ id }) {
                         </div>
                     </div>
 
-                    {/* Badges */}
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
                         <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "#E6F1FB", color: "#185FA5", fontWeight: 500 }}>{m.category}</span>
                         <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "var(--color-background-secondary)", color: "var(--color-text-tertiary)" }}>{m.language}</span>
@@ -158,14 +134,10 @@ function MaterialDetail({ id }) {
                         {m.isFeatured && <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "#fef9c3", color: "#92400e", fontWeight: 500 }}>⭐ Featured</span>}
                     </div>
 
-                    {/* Description */}
                     {m.description && (
-                        <p style={{ fontSize: 13, color: "var(--color-text-secondary)", lineHeight: 1.7, marginBottom: 20 }}>
-                            {m.description}
-                        </p>
+                        <p style={{ fontSize: 13, color: "var(--color-text-secondary)", lineHeight: 1.7, marginBottom: 20 }}>{m.description}</p>
                     )}
 
-                    {/* Meta grid */}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px,1fr))", gap: 12, padding: "16px 0", borderTop: "0.5px solid var(--color-border-tertiary)", borderBottom: "0.5px solid var(--color-border-tertiary)", marginBottom: 20 }}>
                         {[
                             ["File Size", formatSize(m.fileSize)],
@@ -180,41 +152,34 @@ function MaterialDetail({ id }) {
                         ))}
                     </div>
 
-                    {/* Tags */}
                     {m.tags?.length > 0 && (
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
                             {m.tags.map(tag => (
-                                <span key={tag} style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "var(--color-background-secondary)", color: "var(--color-text-secondary)", border: "0.5px solid var(--color-border-secondary)" }}>
-                                    {tag}
-                                </span>
+                                <span key={tag} style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "var(--color-background-secondary)", color: "var(--color-text-secondary)", border: "0.5px solid var(--color-border-secondary)" }}>{tag}</span>
                             ))}
                         </div>
                     )}
 
-                    {/* Locked notice */}
                     {locked && (
                         <p style={{ fontSize: 12, color: "#92400e", background: "#fef3c7", padding: "8px 12px", borderRadius: 8, marginBottom: 12 }}>
                             🔒 This is premium content. Sign up free to view or download it.
                         </p>
                     )}
 
-                    {/* Download button */}
-                    {dlError && (
-                        <p style={{ fontSize: 12, color: "#dc2626", marginBottom: 10 }}>{dlError}</p>
-                    )}
+                    {dlError && <p style={{ fontSize: 12, color: "#dc2626", marginBottom: 10 }}>{dlError}</p>}
+
                     <div style={{ display: "flex", gap: 10 }}>
                         <button onClick={handleView} disabled={viewing}
                             style={{ flex: 1, padding: "11px 0", borderRadius: "var(--border-radius-md)", background: "var(--color-background-secondary)", color: "var(--color-text-primary)", border: "0.5px solid var(--color-border-secondary)", fontSize: 14, fontWeight: 600, cursor: viewing ? "not-allowed" : "pointer", opacity: viewing ? 0.7 : 1, fontFamily: "var(--font-sans)", transition: "opacity 0.15s" }}>
-                            {viewing ? "Opening..." : (locked ? "🔒 View PDF" : "👁 View PDF")}
+                            {viewing ? "Opening..." : locked ? "🔒 View PDF" : "👁 View PDF"}
                         </button>
                         <button onClick={handleDownload} disabled={downloading}
                             style={{ flex: 1, padding: "11px 0", borderRadius: "var(--border-radius-md)", background: "#1D9E75", color: "#fff", border: "none", fontSize: 14, fontWeight: 600, cursor: downloading ? "not-allowed" : "pointer", opacity: downloading ? 0.7 : 1, fontFamily: "var(--font-sans)", transition: "opacity 0.15s" }}>
-                            {downloading ? "Preparing..." : (locked ? "🔒 Sign up to Download" : "⬇ Download PDF")}
+                            {downloading ? "Preparing..." : locked ? "🔒 Sign up to Download" : "⬇ Download PDF"}
                         </button>
                     </div>
                 </div>
 
-                {/* Uploaded by */}
                 {m.uploadedBy?.name && (
                     <p style={{ fontSize: 12, color: "var(--color-text-tertiary)", textAlign: "center" }}>
                         Uploaded by {m.uploadedBy.name}

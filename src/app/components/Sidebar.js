@@ -15,6 +15,7 @@ const commonLinks = [
   { href: "/consultations/bookings", icon: "calendar_month", label: "My Bookings" },
   { href: "/references", icon: "library_books", label: "References" },
   { href: "/tests", icon: "quiz", label: "Test Series" },
+  { href: "/courses", icon: "school", label: "Test Batches" },
   { href: "/marketplace", icon: "storefront", label: "Marketplace" },
   { href: "/blog", icon: "article", label: "Blog" },
   { href: "/about", icon: "info", label: "About Us" },
