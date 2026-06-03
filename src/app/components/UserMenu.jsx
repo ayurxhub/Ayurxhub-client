@@ -85,12 +85,12 @@ export default function UserMenu() {
                                 🩺 Expert Dashboard
                             </button>
                         )}
-                        {user?.role === "admin" && (
+                        {(user?.role === "admin" || user?.role === "superAdmin") && (
                             <button
                                 onClick={() => { router.push("/admin"); setOpen(false); }}
                                 className="w-full text-left px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50 flex items-center gap-2 font-medium"
                             >
-                                🛡️ Admin Panel
+                                {user?.role === "superAdmin" ? "👑 Super Admin Panel" : "🛡️ Admin Panel"}
                             </button>
                         )}
                     </div>
