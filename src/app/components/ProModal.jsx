@@ -9,8 +9,6 @@ const RAZORPAY_KEY = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
 
 const PLAN_META = {
     monthly: { period: "month", save: null, badge: null, icon: "🌱" },
-    quarterly: { period: "3 months", save: "17%", badge: "MOST POPULAR", icon: "🌿" },
-    yearly: { period: "year", save: "58%", badge: "BEST VALUE", icon: "🌳" },
 };
 
 function loadRazorpay() {
@@ -27,11 +25,9 @@ function loadRazorpay() {
 export default function ProModal({ onClose }) {
     const { authAxios, user, setUser } = useAuth();
     const [plans, setPlans] = useState({
-        monthly: { price: 199, label: "Monthly" },
-        quarterly: { price: 499, label: "Quarterly" },
-        yearly: { price: 999, label: "Yearly" },
+        monthly: { price: 1499, label: "Monthly" },
     });
-    const [selected, setSelected] = useState("quarterly");
+    const [selected, setSelected] = useState("monthly");
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState("");
@@ -41,7 +37,8 @@ export default function ProModal({ onClose }) {
 
     useEffect(() => {
         axios.get(`${API}/settings`).then(res => {
-            if (res.data.settings?.proPlans) setPlans(res.data.settings.proPlans);
+            const pp = res.data.settings?.proPlans;
+            if (pp?.monthly) setPlans({ monthly: pp.monthly });
         }).catch(() => { });
     }, []);
 
@@ -188,50 +185,16 @@ export default function ProModal({ onClose }) {
                                 </div>
                             )}
 
-                            {/* Plan cards */}
-                            <p style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Choose your plan</p>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-                                {Object.entries(plans).map(([key, plan]) => {
-                                    const m = PLAN_META[key];
-                                    const isSelected = selected === key;
-                                    return (
-                                        <div key={key} onClick={() => setSelected(key)} style={{
-                                            border: `2px solid ${isSelected ? "#00256e" : "#e5e7eb"}`,
-                                            borderRadius: 14, padding: "14px 16px",
-                                            cursor: "pointer", position: "relative",
-                                            background: isSelected ? "#eff6ff" : "#fafafa",
-                                            transition: "all 0.15s",
-                                            display: "flex", alignItems: "center", justifyContent: "space-between",
-                                        }}>
-                                            {m.badge && (
-                                                <span style={{
-                                                    position: "absolute", top: -10, right: 14,
-                                                    background: isSelected ? "#00256e" : "#1D9E75",
-                                                    color: "#fff", fontSize: 9, fontWeight: 800,
-                                                    padding: "3px 10px", borderRadius: 20, letterSpacing: "0.06em",
-                                                }}>{m.badge}</span>
-                                            )}
-                                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                                                <span style={{ fontSize: 22 }}>{m.icon}</span>
-                                                <div>
-                                                    <p style={{ fontSize: 14, fontWeight: 700, color: "#111827", margin: 0 }}>{plan.label}</p>
-                                                    <p style={{ fontSize: 11, color: "#6b7280", margin: 0 }}>per {m.period}{m.save ? ` · Save ${m.save}` : ""}</p>
-                                                </div>
-                                            </div>
-                                            <div style={{ textAlign: "right" }}>
-                                                <p style={{ fontSize: 20, fontWeight: 800, color: isSelected ? "#00256e" : "#111827", margin: 0 }}>₹{plan.price}</p>
-                                                {key !== "monthly" && (
-                                                    <p style={{ fontSize: 10, color: "#9ca3af", margin: 0 }}>
-                                                        ₹{Math.round(plan.price / (key === "quarterly" ? 3 : 12))}/mo
-                                                    </p>
-                                                )}
-                                            </div>
-                                            {isSelected && (
-                                                <div style={{ position: "absolute", top: 12, left: -1, width: 4, height: "calc(100% - 24px)", background: "#00256e", borderRadius: "0 4px 4px 0" }} />
-                                            )}
-                                        </div>
-                                    );
-                                })}
+                            {/* Price display */}
+                            <div style={{ textAlign: "center", marginBottom: 20 }}>
+                                <div style={{ display: "inline-flex", alignItems: "baseline", gap: 10 }}>
+                                    <span style={{ fontSize: 20, color: "#9ca3af", textDecoration: "line-through", fontWeight: 500 }}>₹1499</span>
+                                    <span style={{ fontSize: 42, fontWeight: 900, color: "#00256e", letterSpacing: "-0.02em" }}>
+                                        ₹{plans.monthly.price}
+                                    </span>
+                                </div>
+                                <p style={{ fontSize: 13, color: "#6b7280", margin: "2px 0 0" }}>/month · <span style={{ color: "#1D9E75", fontWeight: 600 }}>Save 33%</span></p>
+                                <p style={{ fontSize: 11, color: "#9ca3af", margin: "4px 0 0" }}>Full access · Cancel anytime</p>
                             </div>
 
                             {/* What's included */}
@@ -260,10 +223,10 @@ export default function ProModal({ onClose }) {
                                 cursor: loading ? "not-allowed" : "pointer",
                                 fontFamily: "inherit", transition: "opacity 0.15s",
                             }}>
-                                {loading ? "Opening payment..." : `Subscribe for ₹${p.price} / ${meta.period}`}
+                                {loading ? "Opening payment..." : `Upgrade to Pro — ₹${plans.monthly.price}/month`}
                             </button>
                             <p style={{ fontSize: 11, color: "#9ca3af", textAlign: "center", margin: "10px 0 0" }}>
-                                Cancel anytime · Secure payment via Razorpay
+                                Secure payment via Razorpay
                             </p>
                         </>
                     )}

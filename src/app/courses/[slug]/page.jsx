@@ -18,6 +18,7 @@ export default function CoursePage() {
     const [batch, setBatch] = useState(null);
     const [tests, setTests] = useState([]);
     const [isEnrolled, setIsEnrolled] = useState(false);
+    const [proUnlocked, setProUnlocked] = useState(false);
     const [loading, setLoading] = useState(true);
     const [enrolling, setEnrolling] = useState(false);
     const [error, setError] = useState("");
@@ -30,6 +31,7 @@ export default function CoursePage() {
             setBatch(res.data.batch);
             setTests(res.data.tests || []);
             setIsEnrolled(res.data.isEnrolled || false);
+            setProUnlocked(res.data.proUnlocked || false);
         } catch (e) {
             setError("Course not found");
         } finally {
@@ -145,7 +147,16 @@ export default function CoursePage() {
                                 </div>
                             )}
 
-                            {isEnrolled ? (
+                            {proUnlocked ? (
+                                <div>
+                                    <div style={{ padding: "10px", borderRadius: 10, background: "linear-gradient(135deg, rgba(0,37,110,0.1), rgba(29,158,117,0.1))", border: "1px solid rgba(29,158,117,0.3)", color: "#0F6E56", fontSize: 13, fontWeight: 700, textAlign: "center", marginBottom: 8 }}>
+                                        ⭐ Included in your Pro plan
+                                    </div>
+                                    <p style={{ fontSize: 11, color: "#6b7280", textAlign: "center", margin: 0 }}>
+                                        Scroll down to access all tests
+                                    </p>
+                                </div>
+                            ) : isEnrolled ? (
                                 <div>
                                     <div style={{ padding: "10px", borderRadius: 10, background: "#dcfce7", color: "#166534", fontSize: 13, fontWeight: 700, textAlign: "center", marginBottom: 8 }}>
                                         ✓ You're enrolled
