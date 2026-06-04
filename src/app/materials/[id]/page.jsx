@@ -57,18 +57,24 @@ function MaterialDetail({ id }) {
         setDownloading(true);
         setDlError("");
         try {
+            // Step 1: get the signed URL from our backend
             const res = await client().get(`/materials/${id}/download`);
-            if (res.data?.url) {
-                const a = document.createElement("a");
-                a.href = res.data.url;
-                a.download = res.data.filename || `${material?.title || "material"}.pdf`;
-                a.target = "_blank";
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            } else {
-                setDlError("Could not get download URL.");
-            }
+            if (!res.data?.url) { setDlError("Could not get download URL."); return; }
+
+            // Step 2: fetch the actual PDF bytes from the signed URL
+            const pdfRes = await fetch(res.data.url);
+            if (!pdfRes.ok) throw new Error(`Failed to fetch PDF: ${pdfRes.status}`);
+            const blob = await pdfRes.blob();
+
+            // Step 3: trigger browser download with correct filename
+            const objectUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = objectUrl;
+            a.download = res.data.filename || `${material?.title || "material"}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(objectUrl);
         } catch { setDlError("Download failed. Please try again."); }
         finally { setDownloading(false); }
     };
