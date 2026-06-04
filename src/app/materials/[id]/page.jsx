@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { useAuth } from "../../context/AuthContext";
+import ProModal from "../../components/ProModal";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 const publicApi = axios.create({ baseURL: API });
@@ -23,6 +24,7 @@ function MaterialDetail({ id }) {
     const [downloading, setDownloading] = useState(false);
     const [viewing, setViewing] = useState(false);
     const [dlError, setDlError] = useState("");
+    const [showProModal, setShowProModal] = useState(false);
 
     useEffect(() => { fetchMaterial(); }, [id]);
 
@@ -106,7 +108,9 @@ function MaterialDetail({ id }) {
 
     const m = material;
     const paid = isPaidItem(m);
-    const locked = paid && !user;
+    const isProActive = user?.isPro && user?.proExpiry && new Date(user.proExpiry) > new Date();
+    const locked = paid && !user;          // not logged in at all
+    const needsPro = paid && user && !isProActive; // logged in but no Pro
 
     return (
         <div style={{ padding: "24px", background: "var(--color-background-tertiary)", minHeight: "100vh" }}>
@@ -165,23 +169,36 @@ function MaterialDetail({ id }) {
                     )}
 
                     {locked && (
-                        <p style={{ fontSize: 12, color: "#92400e", background: "#fef3c7", padding: "8px 12px", borderRadius: 8, marginBottom: 12 }}>
-                            🔒 This is premium content. Sign up free to view or download it.
+                        <p style={{ fontSize: 12, color: "#92400e", background: "#fef3c7", padding: "10px 14px", borderRadius: 8, marginBottom: 12 }}>
+                            🔒 This is premium content. Create a free account to get started.
                         </p>
+                    )}
+
+                    {needsPro && (
+                        <div style={{ background: "linear-gradient(135deg, rgba(0,37,110,0.06), rgba(29,158,117,0.06))", border: "1px solid rgba(0,37,110,0.15)", borderRadius: 10, padding: "14px 16px", marginBottom: 12 }}>
+                            <p style={{ fontSize: 13, fontWeight: 700, color: "#00256e", margin: "0 0 4px" }}>⭐ Pro Content</p>
+                            <p style={{ fontSize: 12, color: "#6b7280", margin: 0 }}>Upgrade to Pro to view and download this material along with all other Pro content.</p>
+                        </div>
                     )}
 
                     {dlError && <p style={{ fontSize: 12, color: "#dc2626", marginBottom: 10 }}>{dlError}</p>}
 
                     <div style={{ display: "flex", gap: 10 }}>
-                        <button onClick={handleView} disabled={viewing}
-                            style={{ flex: 1, padding: "11px 0", borderRadius: "var(--border-radius-md)", background: "var(--color-background-secondary)", color: "var(--color-text-primary)", border: "0.5px solid var(--color-border-secondary)", fontSize: 14, fontWeight: 600, cursor: viewing ? "not-allowed" : "pointer", opacity: viewing ? 0.7 : 1, fontFamily: "var(--font-sans)", transition: "opacity 0.15s" }}>
-                            {viewing ? "Opening..." : locked ? "🔒 View PDF" : "👁 View PDF"}
+                        <button
+                            onClick={() => { if (locked) { router.push(`/register?next=/materials/${id}`); } else if (needsPro) { setShowProModal(true); } else { handleView(); } }}
+                            disabled={viewing}
+                            style={{ flex: 1, padding: "11px 0", borderRadius: "var(--border-radius-md)", background: needsPro ? "linear-gradient(135deg, #00256e, #1f3c88)" : "var(--color-background-secondary)", color: needsPro ? "#fff" : "var(--color-text-primary)", border: needsPro ? "none" : "0.5px solid var(--color-border-secondary)", fontSize: 14, fontWeight: 600, cursor: viewing ? "not-allowed" : "pointer", opacity: viewing ? 0.7 : 1, fontFamily: "var(--font-sans)", transition: "opacity 0.15s" }}>
+                            {viewing ? "Opening..." : locked ? "🔒 View PDF" : needsPro ? "⭐ Upgrade to View" : "👁 View PDF"}
                         </button>
-                        <button onClick={handleDownload} disabled={downloading}
-                            style={{ flex: 1, padding: "11px 0", borderRadius: "var(--border-radius-md)", background: "#1D9E75", color: "#fff", border: "none", fontSize: 14, fontWeight: 600, cursor: downloading ? "not-allowed" : "pointer", opacity: downloading ? 0.7 : 1, fontFamily: "var(--font-sans)", transition: "opacity 0.15s" }}>
-                            {downloading ? "Preparing..." : locked ? "🔒 Sign up to Download" : "⬇ Download PDF"}
+                        <button
+                            onClick={() => { if (locked) { router.push(`/register?next=/materials/${id}`); } else if (needsPro) { setShowProModal(true); } else { handleDownload(); } }}
+                            disabled={downloading}
+                            style={{ flex: 1, padding: "11px 0", borderRadius: "var(--border-radius-md)", background: needsPro ? "linear-gradient(135deg, #00256e, #1f3c88)" : "#1D9E75", color: "#fff", border: "none", fontSize: 14, fontWeight: 600, cursor: downloading ? "not-allowed" : "pointer", opacity: downloading ? 0.7 : 1, fontFamily: "var(--font-sans)", transition: "opacity 0.15s" }}>
+                            {downloading ? "Preparing..." : locked ? "🔒 Sign up to Download" : needsPro ? "⭐ Upgrade to Download" : "⬇ Download PDF"}
                         </button>
                     </div>
+
+                    {showProModal && <ProModal onClose={() => setShowProModal(false)} />}
                 </div>
 
                 {m.uploadedBy?.name && (
