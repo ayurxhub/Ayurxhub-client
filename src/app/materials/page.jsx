@@ -30,6 +30,7 @@ function MaterialsList() {
     const [search, setSearch] = useState("");
     const [downloading, setDownloading] = useState(null);
     const [viewing, setViewing] = useState(null);
+    const [showProModal, setShowProModal] = useState(false);
 
     useEffect(() => { fetchMaterials(); }, [category]);
 
