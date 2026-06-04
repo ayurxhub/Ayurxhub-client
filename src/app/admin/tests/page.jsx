@@ -40,8 +40,13 @@ export default function AdminTestsPage() {
     const [editingTest, setEditingTest] = useState(null);
     const [editingQ, setEditingQ] = useState(null);
     const [qFilter, setQFilter] = useState({ subject: "", term: "", chapter: "", approved: "" });
+    const [filterSubjects, setFilterSubjects] = useState([]); // dynamic subjects for question filter
 
     useEffect(() => { loadAll(); }, [tab]);
+
+    useEffect(() => {
+        authAxios.get("/subjects").then(r => setFilterSubjects(r.data.subjects || [])).catch(() => { });
+    }, []);
 
     const loadAll = async () => {
         setLoading(true);
@@ -104,17 +109,25 @@ export default function AdminTestsPage() {
 
             {tab === "questions" && (
                 <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-                    <select value={qFilter.subject} onChange={e => setQFilter(f => ({ ...f, subject: e.target.value }))} style={smallSelect}>
+                    {/* Subject — dynamic from DB */}
+                    <select value={qFilter.subject} onChange={e => setQFilter(f => ({ ...f, subject: e.target.value, term: "", chapter: "" }))} style={smallSelect}>
                         <option value="">All Subjects</option>
-                        {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+                        {filterSubjects.map(s => <option key={s._id} value={s.name}>{s.name}</option>)}
                     </select>
-                    <select value={qFilter.term} onChange={e => setQFilter(f => ({ ...f, term: e.target.value }))} style={smallSelect}>
+                    {/* Term — dynamic from selected subject */}
+                    <select value={qFilter.term} onChange={e => setQFilter(f => ({ ...f, term: e.target.value, chapter: "" }))} style={smallSelect}>
                         <option value="">All Terms</option>
-                        {TERMS.map(t => <option key={t} value={t}>{t}</option>)}
+                        {(filterSubjects.find(s => s.name === qFilter.subject)?.terms || []).map(t => (
+                            <option key={t} value={t}>{t}</option>
+                        ))}
                     </select>
+                    {/* Chapter — dynamic from selected subject + term */}
                     <select value={qFilter.chapter} onChange={e => setQFilter(f => ({ ...f, chapter: e.target.value }))} style={smallSelect}>
                         <option value="">All Chapters</option>
-                        {SWASTHA_CHAPTERS.map(ch => <option key={ch} value={ch}>{ch}</option>)}
+                        {(filterSubjects.find(s => s.name === qFilter.subject)?.chapters || [])
+                            .filter(c => !qFilter.term || c.term === qFilter.term)
+                            .map(c => <option key={c.name} value={c.name}>{c.name}</option>)
+                        }
                     </select>
                     <select value={qFilter.approved} onChange={e => setQFilter(f => ({ ...f, approved: e.target.value }))} style={smallSelect}>
                         <option value="">All Status</option>

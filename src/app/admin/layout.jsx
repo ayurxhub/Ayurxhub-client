@@ -22,7 +22,7 @@ const adminLinks = [
 // ── Links visible to SUPER ADMIN only ────────────────────────────────────────
 const superAdminLinks = [
     { href: "/admin/team", icon: "admin_panel_settings", label: "Admin Team" },
-    { href: "/admin/settings", icon: "tune", label: "Settings" },
+
 ];
 
 export default function AdminLayout({ children }) {
