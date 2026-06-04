@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
+import ProModal from "../components/ProModal";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 const publicApi = axios.create({ baseURL: API }); // token-less client for public browsing
@@ -49,11 +50,14 @@ function MaterialsList() {
     // Logged-in users get the authed client (carries token); guests get the public one.
     const client = () => (user ? authAxios : publicApi);
 
+    const isProActive = () => user?.isPro && user?.proExpiry && new Date(user.proExpiry) > new Date();
+
     const handleDownload = async (m) => {
         if (isPaidItem(m) && !user) {
-            router.push(`/signup?next=/materials`);
+            router.push(`/register?next=/materials`);
             return;
         }
+        if (isPaidItem(m) && !isProActive()) { setShowProModal(true); return; }
         setDownloading(m._id);
         try {
             const res = await client().get(`/materials/${m._id}/download?t=${Date.now()}`, {
@@ -77,9 +81,10 @@ function MaterialsList() {
 
     const handleView = async (m) => {
         if (isPaidItem(m) && !user) {
-            router.push(`/signup?next=/materials`);
+            router.push(`/register?next=/materials`);
             return;
         }
+        if (isPaidItem(m) && !isProActive()) { setShowProModal(true); return; }
         setViewing(m._id);
         try {
             const res = await client().get(`/materials/${m._id}/download?inline=true&t=${Date.now()}`, {
@@ -197,6 +202,7 @@ function MaterialsList() {
                 </div>
             )}
 
+            {showProModal && <ProModal onClose={() => setShowProModal(false)} />}
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
     );
