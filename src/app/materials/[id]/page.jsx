@@ -45,9 +45,10 @@ function MaterialDetail({ id }) {
         setViewing(true);
         setDlError("");
         try {
-            const res = await client().get(`/materials/${id}/download?inline=true`);
-            if (res.data?.url) window.open(res.data.url, "_blank");
-            else setDlError("Could not get file URL.");
+            const res = await client().get(`/materials/${id}/download?inline=true`, { responseType: "blob" });
+            const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+            window.open(url, "_blank");
+            setTimeout(() => window.URL.revokeObjectURL(url), 60000);
         } catch { setDlError("Could not open PDF. Please try again."); }
         finally { setViewing(false); }
     };
@@ -57,24 +58,15 @@ function MaterialDetail({ id }) {
         setDownloading(true);
         setDlError("");
         try {
-            // Step 1: get the signed URL from our backend
-            const res = await client().get(`/materials/${id}/download`);
-            if (!res.data?.url) { setDlError("Could not get download URL."); return; }
-
-            // Step 2: fetch the actual PDF bytes from the signed URL
-            const pdfRes = await fetch(res.data.url);
-            if (!pdfRes.ok) throw new Error(`Failed to fetch PDF: ${pdfRes.status}`);
-            const blob = await pdfRes.blob();
-
-            // Step 3: trigger browser download with correct filename
-            const objectUrl = window.URL.createObjectURL(blob);
+            const res = await client().get(`/materials/${id}/download`, { responseType: "blob" });
+            const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
             const a = document.createElement("a");
-            a.href = objectUrl;
-            a.download = res.data.filename || `${material?.title || "material"}.pdf`;
+            a.href = url;
+            a.download = `${material?.title || "material"}.pdf`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            window.URL.revokeObjectURL(objectUrl);
+            window.URL.revokeObjectURL(url);
         } catch { setDlError("Download failed. Please try again."); }
         finally { setDownloading(false); }
     };
