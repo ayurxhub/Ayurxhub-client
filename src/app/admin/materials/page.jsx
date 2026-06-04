@@ -128,6 +128,16 @@ export default function AdminMaterials() {
                         <p style={{ fontSize: 11, color: "#6b7280", margin: "0 0 4px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>Description</p>
                         <textarea value={form.description} rows={3} onChange={e => setForm({ ...form, description: e.target.value })} style={{ ...inp, resize: "vertical", width: "100%" }} />
                     </div>
+                    <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                        <button type="button" onClick={() => setForm(f => ({ ...f, isFree: "true" }))}
+                            style={{ flex: 1, padding: "9px", borderRadius: 8, border: `2px solid ${form.isFree !== "false" ? "#1D9E75" : "#e5e7eb"}`, background: form.isFree !== "false" ? "#dcfce7" : "#fff", color: form.isFree !== "false" ? "#166534" : "#6b7280", fontWeight: 700, cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>
+                            🆓 Free
+                        </button>
+                        <button type="button" onClick={() => setForm(f => ({ ...f, isFree: "false" }))}
+                            style={{ flex: 1, padding: "9px", borderRadius: 8, border: `2px solid ${form.isFree === "false" ? "#00256e" : "#e5e7eb"}`, background: form.isFree === "false" ? "#dbeafe" : "#fff", color: form.isFree === "false" ? "#00256e" : "#6b7280", fontWeight: 700, cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>
+                            ⭐ Pro Only
+                        </button>
+                    </div>
                     <button onClick={handleUpload} disabled={uploading}
                         style={{ padding: "9px 24px", borderRadius: 8, background: "#1D9E75", color: "#fff", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: uploading ? 0.7 : 1 }}>
                         {uploading ? "Uploading..." : "Upload Material"}

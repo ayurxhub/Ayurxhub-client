@@ -49,7 +49,10 @@ function MaterialDetail({ id }) {
             const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
             window.open(url, "_blank");
             setTimeout(() => window.URL.revokeObjectURL(url), 60000);
-        } catch { setDlError("Could not open PDF. Please try again."); }
+        } catch (e) {
+            if (e.response?.data?.requiresPro) setDlError("⭐ Pro subscription required. Upgrade to access this material.");
+            else setDlError("Could not open PDF. Please try again.");
+        }
         finally { setViewing(false); }
     };
 
@@ -67,7 +70,10 @@ function MaterialDetail({ id }) {
             a.click();
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
-        } catch { setDlError("Download failed. Please try again."); }
+        } catch (e) {
+            if (e.response?.data?.requiresPro) setDlError("⭐ Pro subscription required. Upgrade to access this material.");
+            else setDlError("Download failed. Please try again.");
+        }
         finally { setDownloading(false); }
     };
 
