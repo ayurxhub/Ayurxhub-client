@@ -18,7 +18,6 @@ export default function CoursePage() {
     const [batch, setBatch] = useState(null);
     const [tests, setTests] = useState([]);
     const [isEnrolled, setIsEnrolled] = useState(false);
-    const [proUnlocked, setProUnlocked] = useState(false);
     const [loading, setLoading] = useState(true);
     const [enrolling, setEnrolling] = useState(false);
     const [error, setError] = useState("");
@@ -31,7 +30,6 @@ export default function CoursePage() {
             setBatch(res.data.batch);
             setTests(res.data.tests || []);
             setIsEnrolled(res.data.isEnrolled || false);
-            setProUnlocked(res.data.proUnlocked || false);
         } catch (e) {
             setError("Course not found");
         } finally {
@@ -41,24 +39,85 @@ export default function CoursePage() {
 
     useEffect(() => { load(); }, [slug]);
 
+    // Load Razorpay checkout script
+    const loadRazorpay = () => new Promise((resolve) => {
+        if (window.Razorpay) return resolve(true);
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+    });
+
     const handleEnroll = async () => {
         if (!user) { router.push(`/login?next=/courses/${slug}`); return; }
+
+        // Free batch — direct enroll
+        if (batch?.price === 0) {
+            setEnrolling(true);
+            setError("");
+            try {
+                const res = await authAxios.post(`/batches/${slug}/enroll`);
+                if (res.data.success) {
+                    setIsEnrolled(true);
+                    setSuccessMsg("You're enrolled! All tests are now unlocked.");
+                    setTimeout(() => setSuccessMsg(""), 4000);
+                    load();
+                }
+            } catch (e) {
+                setError(e.response?.data?.message || "Enrollment failed");
+            } finally {
+                setEnrolling(false);
+            }
+            return;
+        }
+
+        // Paid batch — Razorpay flow
         setEnrolling(true);
         setError("");
         try {
-            const res = await authAxios.post(`/batches/${slug}/enroll`);
-            if (res.data.success) {
-                setIsEnrolled(true);
-                setSuccessMsg("You're enrolled! All tests are now unlocked.");
-                setTimeout(() => setSuccessMsg(""), 4000);
-            }
+            const loaded = await loadRazorpay();
+            if (!loaded) throw new Error("Failed to load payment gateway. Please try again.");
+
+            const { data } = await authAxios.post(`/batches/${slug}/create-order`);
+            if (!data.success) throw new Error(data.message);
+            if (data.alreadyEnrolled) { setIsEnrolled(true); return; }
+
+            const options = {
+                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+                amount: data.order.amount,
+                currency: "INR",
+                name: "AyurXHub",
+                description: data.batchTitle,
+                order_id: data.order.id,
+                prefill: { name: user?.name || "", email: user?.email || "" },
+                theme: { color: "#00256e" },
+                handler: async (response) => {
+                    try {
+                        const verify = await authAxios.post(`/batches/${slug}/verify-payment`, {
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                        });
+                        if (verify.data.success) {
+                            setIsEnrolled(true);
+                            setSuccessMsg("Payment successful! All tests are now unlocked. 🎉");
+                            setTimeout(() => setSuccessMsg(""), 5000);
+                            load();
+                        }
+                    } catch {
+                        setError("Payment received but enrollment failed. Contact support.");
+                    } finally {
+                        setEnrolling(false);
+                    }
+                },
+                modal: { ondismiss: () => setEnrolling(false) },
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.open();
         } catch (e) {
-            if (e.response?.data?.requiresPayment) {
-                setError(`This is a paid course (₹${batch?.price}). Contact admin or WhatsApp us to get access.`);
-            } else {
-                setError(e.response?.data?.message || "Enrollment failed");
-            }
-        } finally {
+            setError(e.message || "Payment failed. Please try again.");
             setEnrolling(false);
         }
     };
@@ -147,16 +206,7 @@ export default function CoursePage() {
                                 </div>
                             )}
 
-                            {proUnlocked ? (
-                                <div>
-                                    <div style={{ padding: "10px", borderRadius: 10, background: "linear-gradient(135deg, rgba(0,37,110,0.1), rgba(29,158,117,0.1))", border: "1px solid rgba(29,158,117,0.3)", color: "#0F6E56", fontSize: 13, fontWeight: 700, textAlign: "center", marginBottom: 8 }}>
-                                        ⭐ Included in your Pro plan
-                                    </div>
-                                    <p style={{ fontSize: 11, color: "#6b7280", textAlign: "center", margin: 0 }}>
-                                        Scroll down to access all tests
-                                    </p>
-                                </div>
-                            ) : isEnrolled ? (
+                            {isEnrolled ? (
                                 <div>
                                     <div style={{ padding: "10px", borderRadius: 10, background: "#dcfce7", color: "#166534", fontSize: 13, fontWeight: 700, textAlign: "center", marginBottom: 8 }}>
                                         ✓ You're enrolled
