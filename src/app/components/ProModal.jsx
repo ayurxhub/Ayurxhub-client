@@ -200,16 +200,26 @@ export default function ProModal({ onClose }) {
                             {/* What's included */}
                             <div style={{ background: "#f8fafc", borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
                                 <p style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 10px" }}>What's included</p>
+
+                                {/* Highlighted batch benefit */}
+                                <div style={{ background: "linear-gradient(135deg, rgba(0,37,110,0.07), rgba(29,158,117,0.07))", border: "1px solid rgba(29,158,117,0.3)", borderRadius: 8, padding: "9px 12px", marginBottom: 10, display: "flex", alignItems: "flex-start", gap: 8 }}>
+                                    <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>🎯</span>
+                                    <div>
+                                        <p style={{ fontSize: 12, fontWeight: 700, color: "#00256e", margin: "0 0 2px" }}>All Test Batches included — free</p>
+                                        <p style={{ fontSize: 11, color: "#6b7280", margin: 0, lineHeight: 1.4 }}>AP Swasthavritta, Panchakarma, Rachana Sharira & more — no separate purchase needed when platform is in paid mode</p>
+                                    </div>
+                                </div>
+
                                 {[
-                                    "All full chapter tests (30 questions each)",
-                                    "Detailed performance analytics & score history",
-                                    "Question-level explanations for every answer",
-                                    "Unlimited test retakes",
-                                    "Priority access to new test content",
-                                ].map(item => (
-                                    <div key={item} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                                        <span style={{ color: "#1D9E75", fontSize: 14, flexShrink: 0 }}>✓</span>
-                                        <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>{item}</p>
+                                    { icon: "📚", text: "All paid chapter tests (30 Qs each)" },
+                                    { icon: "📊", text: "Detailed performance analytics & score history" },
+                                    { icon: "💡", text: "Question-level explanations for every answer" },
+                                    { icon: "🔁", text: "Unlimited test retakes" },
+                                    { icon: "🚀", text: "Priority access to new test content" },
+                                ].map(({ icon, text }) => (
+                                    <div key={text} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                                        <span style={{ fontSize: 13, flexShrink: 0 }}>{icon}</span>
+                                        <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>{text}</p>
                                     </div>
                                 ))}
                             </div>
