@@ -1,7 +1,19 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
+// Keep Render free tier alive — ping every 10 minutes
+function useKeepAlive() {
+    useEffect(() => {
+        const ping = () => fetch(`${API}/health`).catch(() => { });
+        ping(); // immediate ping on load
+        const interval = setInterval(ping, 10 * 60 * 1000); // every 10 min
+        return () => clearInterval(interval);
+    }, []);
+}
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 import { AuthProvider } from "../context/AuthContext";
@@ -13,6 +25,7 @@ export default function ClientLayout({
     children: React.ReactNode;
 }) {
     const pathname = usePathname();
+    useKeepAlive();
 
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
