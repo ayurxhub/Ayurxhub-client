@@ -373,7 +373,18 @@ function TestAttempt() {
             }
 
         } catch (e) {
-            alert(e.response?.data?.message || "Failed to start test");
+            const data = e.response?.data;
+            if (data?.requiresEnrollment && data?.batchSlug) {
+                // Redirect to the batch/course page so they can enroll
+                router.push(`/courses/${data.batchSlug}`);
+                return;
+            }
+            if (data?.requiresPro) {
+                // Redirect to tests page which has the Upgrade to Pro button
+                router.push("/tests");
+                return;
+            }
+            alert(data?.message || "Failed to start test");
             setPhase("intro");
         }
     };

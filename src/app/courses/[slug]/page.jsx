@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
+import axios from "axios";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const publicApi = axios.create({ baseURL: API });
 import { useParams, useRouter } from "next/navigation";
 
 const TYPE_LABELS = {
@@ -11,7 +14,7 @@ const TYPE_LABELS = {
 };
 
 export default function CoursePage() {
-    const { authAxios, user } = useAuth();
+    const { authAxios, user, loading: authLoading } = useAuth();
     const { slug } = useParams();
     const router = useRouter();
 
@@ -26,7 +29,10 @@ export default function CoursePage() {
     const load = async () => {
         setLoading(true);
         try {
-            const res = await authAxios.get(`/batches/${slug}`);
+            // Use publicApi so guests can view the course page
+            // If user is logged in, pass token for enrollment status
+            const api = user ? authAxios : publicApi;
+            const res = await api.get(`/batches/${slug}`);
             setBatch(res.data.batch);
             setTests(res.data.tests || []);
             setIsEnrolled(res.data.isEnrolled || false);
@@ -37,7 +43,10 @@ export default function CoursePage() {
         }
     };
 
-    useEffect(() => { load(); }, [slug]);
+    useEffect(() => {
+        if (authLoading) return; // wait for auth to resolve first
+        load();
+    }, [slug, authLoading]);
 
     // Load Razorpay checkout script
     const loadRazorpay = () => new Promise((resolve) => {
