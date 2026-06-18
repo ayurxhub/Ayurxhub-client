@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { useProModal } from "../context/ProModalContext";
 import { useEffect } from "react";
 import Image from "next/image";
-import NoticeBoard from "./NoticeBoard";
+import NoticeBoard from "./Noticeboard";
 const commonLinks = [
   { href: "/", icon: "home", label: "Home" },
   { href: "/materials", icon: "auto_stories", label: "Curriculum" },
