@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import FeaturedHomeSection from "./components/FeaturedHomeSection";
 import AnnouncementTicker from "./components/AnnouncementTicker";
-
+import NoticeBoard from "./components/NoticeBoard";
 // ─── Stats hook ───────────────────────────────────────────────────────────────
 function useCountUp(target: number, duration = 1800) {
   const [count, setCount] = useState(0);
@@ -297,6 +297,8 @@ export default function LandingPage() {
   `}</style>
       </section>
 
+
+      <NoticeBoard />
       {/* ── Featured content (blogs + courses marked as featured) ── */}
       <div style={{ paddingTop: 56 }}>
         <FeaturedHomeSection />
