@@ -87,7 +87,7 @@ export default function NoticesPage() {
                                         </div>
                                         <p style={{ fontSize: 14, fontWeight: 700, color: "#111827", margin: "0 0 6px", lineHeight: 1.4 }}>{n.title}</p>
                                         {n.message && (
-                                            <p style={{ fontSize: 12, color: "#6b7280", margin: 0, lineHeight: 1.6, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                                            <p style={{ fontSize: 12, color: "#6b7280", margin: 0, lineHeight: 1.6 }}>
                                                 {n.message}
                                             </p>
                                         )}
