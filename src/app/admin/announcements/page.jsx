@@ -13,7 +13,7 @@ const TYPE_CONFIG = {
     news: { label: "News", icon: "📰", color: "#1D9E75" },
 };
 
-const EMPTY = { title: "", message: "", type: "notice", expiresAt: "", link: "", linkText: "Learn More" };
+const EMPTY = { title: "", message: "", content: "", type: "notice", expiresAt: "", link: "", linkText: "Learn More" };
 
 export default function AdminAnnouncements() {
     const { authAxios } = useAuth();
@@ -56,7 +56,7 @@ export default function AdminAnnouncements() {
 
     const handleEdit = (a) => {
         setForm({
-            title: a.title, message: a.message, type: a.type,
+            title: a.title, message: a.message, content: a.content || "", type: a.type,
             expiresAt: a.expiresAt ? new Date(a.expiresAt).toISOString().slice(0, 16) : "",
             link: a.link || "", linkText: a.linkText || "Learn More",
         });
@@ -156,6 +156,19 @@ export default function AdminAnnouncements() {
                             onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
                             placeholder="Describe the announcement in one or two sentences..."
                             style={{ ...inp, resize: "vertical", width: "100%" }} />
+                    </div>
+
+                    <div style={{ marginBottom: 16 }}>
+                        <p style={labelSt}>
+                            Detailed Content
+                            <span style={{ fontWeight: 400, color: "#9ca3af", textTransform: "none", letterSpacing: 0 }}>
+                                {" "}(optional — shown on full notice page)
+                            </span>
+                        </p>
+                        <textarea value={form.content} rows={6}
+                            onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
+                            placeholder="Add full details, eligibility, dates, instructions etc. Supports line breaks."
+                            style={{ ...inp, resize: "vertical", width: "100%", lineHeight: 1.7 }} />
                     </div>
 
                     {/* Preview */}

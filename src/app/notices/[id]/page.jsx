@@ -80,9 +80,23 @@ export default function NoticeDetailPage() {
                         {/* Divider */}
                         <div style={{ height: 1, background: "#f3f4f6", margin: "0 0 20px" }} />
 
-                        {/* Content */}
+                        {/* Summary bar — only shows if detailed content exists */}
+                        {notice.content && notice.message && (
+                            <div style={{
+                                background: "#f8fafc",
+                                borderRadius: 8,
+                                padding: "10px 14px",
+                                marginBottom: 20,
+                                borderLeft: "3px solid #3b82f6"
+                            }}>
+                                <p style={{ fontSize: 12, color: "#6b7280", margin: "0 0 4px", fontWeight: 600 }}>SUMMARY</p>
+                                <p style={{ fontSize: 13, color: "#374151", margin: 0 }}>{notice.message}</p>
+                            </div>
+                        )}
+
+                        {/* Full detail content */}
                         <div style={{ fontSize: 14, color: "#374151", lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
-                            {notice.message || notice.content || notice.body || "No details available."}
+                            {notice.content || notice.message || "No details available."}
                         </div>
 
                         {/* Link if present */}
