@@ -601,23 +601,39 @@ function TestAttempt() {
                         </div>
 
                         {/* Navigation */}
-                        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 24, gap: 10 }}>
-                            <button onClick={() => setCurrentQ(p => Math.max(0, p - 1))} disabled={currentQ === 0}
-                                style={{ padding: "10px 16px", borderRadius: 10, border: "1px solid #e5e7eb", background: "#fff", color: "#374151", fontSize: 13, cursor: currentQ === 0 ? "not-allowed" : "pointer", opacity: currentQ === 0 ? 0.4 : 1, fontFamily: "inherit" }}>
-                                ← Prev
-                            </button>
-                            {currentQ < questions.length - 1 ? (
-                                <button onClick={() => setCurrentQ(p => p + 1)}
-                                    style={{ padding: "10px 20px", borderRadius: 10, border: "none", background: "#00256e", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                                    Next →
-                                </button>
-                            ) : (
-                                <button onClick={() => handleSubmit(false)} disabled={submitting}
-                                    style={{ padding: "10px 20px", borderRadius: 10, border: "none", background: "#1D9E75", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                                    {submitting ? "Submitting…" : "Submit Test ✓"}
-                                </button>
-                            )}
-                        </div>
+                        {/* Navigation */}
+                        {(() => {
+                            const isLast = currentQ === questions.length - 1;
+                            return (
+                                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 24, gap: 10, flexWrap: "wrap" }}>
+                                    <button onClick={() => setCurrentQ(p => Math.max(0, p - 1))} disabled={currentQ === 0}
+                                        style={{ padding: "10px 16px", borderRadius: 10, border: "1px solid #e5e7eb", background: "#fff", color: "#374151", fontSize: 13, cursor: currentQ === 0 ? "not-allowed" : "pointer", opacity: currentQ === 0 ? 0.4 : 1, fontFamily: "inherit" }}>
+                                        ← Prev
+                                    </button>
+
+                                    <div style={{ display: "flex", gap: 10 }}>
+                                        {/* Always available, regardless of which question you're on */}
+                                        <button onClick={() => handleSubmit(false)} disabled={submitting}
+                                            style={{
+                                                padding: "10px 18px", borderRadius: 10,
+                                                border: isLast ? "none" : "1.5px solid #1D9E75",
+                                                background: isLast ? "#1D9E75" : "#fff",
+                                                color: isLast ? "#fff" : "#1D9E75",
+                                                fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+                                            }}>
+                                            {submitting ? "Submitting…" : isLast ? "Submit Test ✓" : "Submit Test"}
+                                        </button>
+
+                                        {!isLast && (
+                                            <button onClick={() => setCurrentQ(p => p + 1)}
+                                                style={{ padding: "10px 20px", borderRadius: 10, border: "none", background: "#00256e", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                                                Next →
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })()}
                         {testError && (
                             <p style={{ fontSize: 12, color: "#dc2626", marginTop: 8, textAlign: "center" }}>{testError}</p>
                         )}
