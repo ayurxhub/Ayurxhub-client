@@ -31,7 +31,7 @@ export default function LoginPage() {
             const { idToken, displayName, email } = await signInWithGoogle();
 
             try {
-                const user = await loginWithGoogle(idToken);
+                const user = await loginWithGoogle(idToken, isConsultant ? "expert" : role);
                 redirect(user);
             } catch (err) {
                 if (err.response?.status === 201 || !err.response) {

@@ -82,7 +82,7 @@ export default function RegisterPage() {
             const { idToken, displayName, email } = await signInWithGoogle();
 
             try {
-                const user = await loginWithGoogle(idToken);
+                const user = await loginWithGoogle(idToken, role);
 
                 if (user.role === "expert") {
                     if (!user.verificationStatus || user.verificationStatus !== "approved") {
