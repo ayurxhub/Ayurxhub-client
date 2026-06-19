@@ -11,17 +11,36 @@ export default function BookingPage() {
     return <ProtectedRoute><BookingForm /></ProtectedRoute>;
 }
 
+// ── Razorpay checkout.js loader (idempotent) ───────────────────────────────────
+function loadRazorpayScript() {
+    return new Promise((resolve) => {
+        if (typeof window === "undefined") return resolve(false);
+        if (window.Razorpay) return resolve(true);
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+    });
+}
+
 function BookingForm() {
-    const { authAxios } = useAuth();
+    const { authAxios, user } = useAuth();
     const router = useRouter();
     const { id } = useParams();
     const searchParams = useSearchParams();
 
     const [expert, setExpert] = useState(null);
     const [availability, setAvailability] = useState([]);
+    const [accessInfo, setAccessInfo] = useState(null); // { hasAccess, expiresAt }
     const [loadingInit, setLoadingInit] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
+
+    // ── Payment state ───────────────────────────────────────────────────────
+    const [pendingBooking, setPendingBooking] = useState(null); // booking awaiting payment
+    const [payingNow, setPayingNow] = useState(false);
+    const [paymentError, setPaymentError] = useState("");
 
     // Pre-fill from query params if coming from availability tab
     const [selectedDate, setSelectedDate] = useState(searchParams.get("date") || "");
@@ -38,12 +57,14 @@ function BookingForm() {
     const loadData = async () => {
         setLoadingInit(true);
         try {
-            const [expRes, avRes] = await Promise.all([
+            const [expRes, avRes, accessRes] = await Promise.all([
                 authAxios.get(`/profile/experts/${id}`),
                 authAxios.get(`/availability/${id}`),
+                authAxios.get(`/bookings/access/${id}`).catch(() => ({ data: { hasAccess: false, expiresAt: null } })),
             ]);
             setExpert(expRes.data.expert);
             setAvailability(avRes.data.availableSlots || []);
+            setAccessInfo({ hasAccess: accessRes.data.hasAccess, expiresAt: accessRes.data.expiresAt });
         } catch (err) {
             console.error(err);
         } finally {
@@ -53,12 +74,14 @@ function BookingForm() {
 
     const slotsForDate = availability.find((d) => d.date === selectedDate)?.slots || [];
 
+    // ── Step 1: create the booking ──────────────────────────────────────────
     const handleSubmit = async () => {
         if (!selectedDate || !selectedSlot) {
             setError("Please select a date and time slot.");
             return;
         }
         setError("");
+        setPaymentError("");
         setSubmitting(true);
         try {
             const res = await authAxios.post("/bookings", {
@@ -69,11 +92,81 @@ function BookingForm() {
                 mode,
                 studentNotes: notes,
             });
-            router.push(`/consultations/bookings?success=1`);
+
+            const { booking, freeViaAccess } = res.data;
+
+            // Already covered by an active 7-day access window (or nothing to pay)
+            if (freeViaAccess || booking.payment?.status === "paid" || !booking.payment?.amount) {
+                router.push(`/consultations/bookings?success=1`);
+                return;
+            }
+
+            // Needs payment — booking exists as "pending" payment, kick off Razorpay
+            await initiatePayment(booking);
         } catch (err) {
             setError(err.response?.data?.message || "Booking failed. Please try again.");
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    // ── Step 2: pay for a booking that's already been created ──────────────
+    const initiatePayment = async (booking) => {
+        setPendingBooking(booking);
+        setPaymentError("");
+        setPayingNow(true);
+
+        try {
+            const loaded = await loadRazorpayScript();
+            if (!loaded) {
+                setPaymentError("Couldn't load the payment gateway. Check your connection and try again.");
+                return;
+            }
+
+            const orderRes = await authAxios.post(`/bookings/${booking._id}/create-order`);
+            const { order } = orderRes.data;
+
+            const options = {
+                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+                amount: order.amount,
+                currency: order.currency,
+                order_id: order.id,
+                name: "AyurXHub",
+                description: `Consultation with ${expert?.name || "expert"}`,
+                prefill: {
+                    name: user?.name || "",
+                    email: user?.email || "",
+                },
+                theme: { color: "#00256e" },
+                handler: async (response) => {
+                    try {
+                        await authAxios.post(`/bookings/${booking._id}/verify-payment`, {
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                        });
+                        setPendingBooking(null);
+                        router.push(`/consultations/bookings?success=1`);
+                    } catch (err) {
+                        setPaymentError(err.response?.data?.message || "Payment verification failed. Please try again or contact support.");
+                    }
+                },
+                modal: {
+                    ondismiss: () => {
+                        setPaymentError("Payment was cancelled. Your slot is held — pay anytime to confirm it.");
+                    },
+                },
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.on("payment.failed", (resp) => {
+                setPaymentError(resp.error?.description || "Payment failed. Please try again.");
+            });
+            rzp.open();
+        } catch (err) {
+            setPaymentError(err.response?.data?.message || "Couldn't start payment. Please try again.");
+        } finally {
+            setPayingNow(false);
         }
     };
 
@@ -112,6 +205,22 @@ function BookingForm() {
                     Back to profile
                 </button>
 
+                {/* Free-access banner */}
+                {accessInfo?.hasAccess && (
+                    <div style={{
+                        padding: "12px 16px", borderRadius: 10, marginBottom: 16,
+                        background: "#E1F5EE", border: "0.5px solid #9FE1CB",
+                        display: "flex", alignItems: "center", gap: 8,
+                    }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 18, color: "#0F6E56" }}>verified</span>
+                        <p style={{ fontSize: 13, color: "#0F6E56", margin: 0 }}>
+                            You have free access to {expert?.name} until{" "}
+                            {new Date(accessInfo.expiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} —
+                            book as many sessions as you like at no extra cost.
+                        </p>
+                    </div>
+                )}
+
                 {/* Expert summary card */}
                 {expert && (
                     <div style={{
@@ -133,9 +242,16 @@ function BookingForm() {
                         </div>
                         <div style={{ textAlign: "right" }}>
                             <p style={{ fontSize: 11, color: "#757682" }}>Consultation Fee</p>
-                            <p style={{ fontSize: 20, fontWeight: 700, color: "#00256e" }}>
-                                {expert.consultationFee > 0 ? `₹${expert.consultationFee}` : "Free"}
-                            </p>
+                            {accessInfo?.hasAccess ? (
+                                <>
+                                    <p style={{ fontSize: 20, fontWeight: 700, color: "#0F6E56" }}>Free</p>
+                                    <p style={{ fontSize: 10, color: "#0F6E56" }}>7-day access active</p>
+                                </>
+                            ) : (
+                                <p style={{ fontSize: 20, fontWeight: 700, color: "#00256e" }}>
+                                    {expert.consultationFee > 0 ? `₹${expert.consultationFee}` : "Free"}
+                                </p>
+                            )}
                         </div>
                     </div>
                 )}
@@ -260,52 +376,101 @@ function BookingForm() {
                     </StepCard>
                 )}
 
-                {/* Summary + Confirm */}
-                {selectedDate && selectedSlot && (
+                {/* ── Pending payment panel (booking already created, just needs ₹) ── */}
+                {pendingBooking ? (
                     <div style={{
                         background: "#fff", borderRadius: 16, padding: 22,
-                        border: "0.5px solid rgba(197,198,211,0.35)", marginTop: 8,
+                        border: "1px solid #fde68a", marginTop: 8,
                     }}>
-                        <h3 style={{ fontSize: 15, fontWeight: 600, color: "#00256e", marginBottom: 16 }}>Booking Summary</h3>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
-                            {[
-                                ["Expert", expert?.name],
-                                ["Date", new Date(selectedDate).toLocaleDateString("en-IN", { weekday: "long", month: "long", day: "numeric" })],
-                                ["Time", `${selectedSlot.startTime} – ${selectedSlot.endTime}`],
-                                ["Mode", mode.charAt(0).toUpperCase() + mode.slice(1)],
-                                ["Fee", expert?.consultationFee > 0 ? `₹${expert.consultationFee}` : "Free"],
-                            ].map(([label, val]) => (
-                                <div key={label}>
-                                    <p style={{ fontSize: 11, color: "#757682", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>{label}</p>
-                                    <p style={{ fontSize: 13, fontWeight: 500, color: "#191c1e" }}>{val}</p>
-                                </div>
-                            ))}
-                        </div>
+                        <h3 style={{ fontSize: 15, fontWeight: 600, color: "#854d0e", marginBottom: 8 }}>
+                            Almost there — complete your payment
+                        </h3>
+                        <p style={{ fontSize: 13, color: "#757682", marginBottom: 16, lineHeight: 1.6 }}>
+                            Your slot with {expert?.name} on{" "}
+                            {new Date(pendingBooking.date).toLocaleDateString("en-IN", { day: "numeric", month: "long" })} at{" "}
+                            {pendingBooking.startTime} is held. Pay ₹{pendingBooking.payment?.amount} to confirm it —
+                            this also unlocks 7 days of free bookings and chat with {expert?.name}.
+                        </p>
 
-                        {error && (
+                        {paymentError && (
                             <div style={{ padding: "10px 14px", borderRadius: 8, background: "#FCEBEB", color: "#A32D2D", fontSize: 13, marginBottom: 14 }}>
-                                {error}
+                                {paymentError}
                             </div>
                         )}
 
                         <button
-                            onClick={handleSubmit}
-                            disabled={submitting}
+                            onClick={() => initiatePayment(pendingBooking)}
+                            disabled={payingNow}
                             style={{
                                 width: "100%", padding: "13px", borderRadius: 12,
-                                background: submitting ? "#9ca3af" : "linear-gradient(135deg, #00256e, #1f3c88)",
+                                background: payingNow ? "#9ca3af" : "linear-gradient(135deg, #00256e, #1f3c88)",
                                 color: "#fff", border: "none", fontSize: 15,
-                                fontWeight: 600, cursor: submitting ? "not-allowed" : "pointer",
-                                transition: "all 0.15s",
+                                fontWeight: 600, cursor: payingNow ? "not-allowed" : "pointer",
                             }}
                         >
-                            {submitting ? "Booking..." : "Confirm Booking"}
+                            {payingNow ? "Opening payment…" : `Pay ₹${pendingBooking.payment?.amount} Now`}
                         </button>
 
                         <p style={{ fontSize: 11, color: "#9ca3af", textAlign: "center", marginTop: 10 }}>
-                            Booking is confirmed once the expert accepts your request
+                            You can also pay later from "My Bookings"
                         </p>
                     </div>
+                ) : (
+                    /* Summary + Confirm */
+                    selectedDate && selectedSlot && (
+                        <div style={{
+                            background: "#fff", borderRadius: 16, padding: 22,
+                            border: "0.5px solid rgba(197,198,211,0.35)", marginTop: 8,
+                        }}>
+                            <h3 style={{ fontSize: 15, fontWeight: 600, color: "#00256e", marginBottom: 16 }}>Booking Summary</h3>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
+                                {[
+                                    ["Expert", expert?.name],
+                                    ["Date", new Date(selectedDate).toLocaleDateString("en-IN", { weekday: "long", month: "long", day: "numeric" })],
+                                    ["Time", `${selectedSlot.startTime} – ${selectedSlot.endTime}`],
+                                    ["Mode", mode.charAt(0).toUpperCase() + mode.slice(1)],
+                                    ["Fee", accessInfo?.hasAccess
+                                        ? "Free (7-day access)"
+                                        : (expert?.consultationFee > 0 ? `₹${expert.consultationFee}` : "Free")],
+                                ].map(([label, val]) => (
+                                    <div key={label}>
+                                        <p style={{ fontSize: 11, color: "#757682", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>{label}</p>
+                                        <p style={{ fontSize: 13, fontWeight: 500, color: "#191c1e" }}>{val}</p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {error && (
+                                <div style={{ padding: "10px 14px", borderRadius: 8, background: "#FCEBEB", color: "#A32D2D", fontSize: 13, marginBottom: 14 }}>
+                                    {error}
+                                </div>
+                            )}
+
+                            <button
+                                onClick={handleSubmit}
+                                disabled={submitting}
+                                style={{
+                                    width: "100%", padding: "13px", borderRadius: 12,
+                                    background: submitting ? "#9ca3af" : "linear-gradient(135deg, #00256e, #1f3c88)",
+                                    color: "#fff", border: "none", fontSize: 15,
+                                    fontWeight: 600, cursor: submitting ? "not-allowed" : "pointer",
+                                    transition: "all 0.15s",
+                                }}
+                            >
+                                {submitting
+                                    ? "Booking..."
+                                    : accessInfo?.hasAccess
+                                        ? "Confirm Free Booking"
+                                        : "Confirm & Pay"}
+                            </button>
+
+                            <p style={{ fontSize: 11, color: "#9ca3af", textAlign: "center", marginTop: 10 }}>
+                                {accessInfo?.hasAccess
+                                    ? "Booking is confirmed once the expert accepts your request"
+                                    : "You'll be asked to pay after this step, then the expert confirms your request"}
+                            </p>
+                        </div>
+                    )
                 )}
             </div>
 
