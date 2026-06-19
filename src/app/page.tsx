@@ -5,7 +5,7 @@ import { useAuth } from "./context/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
 import FeaturedHomeSection from "./components/FeaturedHomeSection";
-import AnnouncementTicker from "./components/AnnouncementTicker";
+
 import NoticeBoard from "./components/Noticeboard";
 // ─── Stats hook ───────────────────────────────────────────────────────────────
 function useCountUp(target: number, duration = 1800) {
@@ -167,7 +167,7 @@ export default function LandingPage() {
               </span>
             </div>
 
-            <AnnouncementTicker />
+
 
             <h1
               style={{
