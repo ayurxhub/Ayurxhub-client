@@ -383,6 +383,51 @@ function ConsultantDashboard() {
                             </p>
                         </div>
 
+                        {/* Fee + verification status — visible to the expert for transparency */}
+                        <div style={{
+                            display: "flex", alignItems: "center", justifyContent: "space-between",
+                            background: "#fff", border: "1px solid #f3f4f6", borderRadius: 14,
+                            padding: "16px 20px", marginBottom: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                            flexWrap: "wrap", gap: 12,
+                        }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <div style={{
+                                    width: 38, height: 38, borderRadius: 10, background: "#d1fae5",
+                                    border: "1px solid #6ee7b7", display: "grid", placeItems: "center", fontSize: 17,
+                                }}>💳</div>
+                                <div>
+                                    <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 2px", fontWeight: 500 }}>
+                                        Your Consultation Fee
+                                    </p>
+                                    <p style={{ fontSize: 20, fontWeight: 700, color: "#0e4f3b", margin: 0, letterSpacing: "-0.02em" }}>
+                                        ₹{user?.consultationFee ?? 199}
+                                        <span style={{ fontSize: 12, fontWeight: 500, color: "#9ca3af", marginLeft: 8 }}>
+                                            unlocks 7 days of bookings + chat per patient
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            {(() => {
+                                const vs = user?.verificationStatus || "none";
+                                const meta = {
+                                    approved: { bg: "#dcfce7", color: "#166534", border: "#86efac", label: "✓ Verified — visible to students" },
+                                    pending: { bg: "#fef9c3", color: "#854d0e", border: "#fde68a", label: "⏳ Pending admin approval" },
+                                    rejected: { bg: "#fee2e2", color: "#991b1b", border: "#fecaca", label: "✗ Rejected — check onboarding" },
+                                    suspended: { bg: "#f3f4f6", color: "#374151", border: "#e5e7eb", label: "⏸ Suspended" },
+                                    none: { bg: "#f3f4f6", color: "#6b7280", border: "#e5e7eb", label: "Not submitted for verification yet" },
+                                }[vs] || { bg: "#f3f4f6", color: "#6b7280", border: "#e5e7eb", label: vs };
+                                return (
+                                    <span style={{
+                                        fontSize: 12, fontWeight: 600, padding: "7px 14px", borderRadius: 20,
+                                        background: meta.bg, color: meta.color, border: `1px solid ${meta.border}`,
+                                    }}>
+                                        {meta.label}
+                                    </span>
+                                );
+                            })()}
+                        </div>
+
                         {/* Stat cards */}
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 28 }}>
                             {[
