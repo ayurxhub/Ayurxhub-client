@@ -52,6 +52,9 @@ function BookingForm() {
 
     useEffect(() => {
         if (id) loadData();
+        // Preload Razorpay's script now, in parallel with everything else,
+        // instead of waiting until the moment payment actually starts.
+        loadRazorpayScript();
     }, [id]);
 
     const loadData = async () => {
@@ -117,13 +120,15 @@ function BookingForm() {
         setPayingNow(true);
 
         try {
-            const loaded = await loadRazorpayScript();
+            const [loaded, orderRes] = await Promise.all([
+                loadRazorpayScript(),
+                authAxios.post(`/bookings/${booking._id}/create-order`),
+            ]);
             if (!loaded) {
                 setPaymentError("Couldn't load the payment gateway. Check your connection and try again.");
                 return;
             }
 
-            const orderRes = await authAxios.post(`/bookings/${booking._id}/create-order`);
             const { order } = orderRes.data;
 
             const options = {
