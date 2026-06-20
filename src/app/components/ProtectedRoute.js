@@ -26,6 +26,16 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
         if (user.role === "expert") {
             const status = user.verificationStatus;
             const isOnboarding = pathname === "/consultations/onboarding";
+            const isSuspendedPage = pathname === "/consultations/suspended";
+
+            // Suspended experts get a dedicated explanation screen, not the
+            // dashboard, and not the onboarding/document-upload flow either
+            // (they were already approved once — resubmitting docs isn't
+            // the right next step for them).
+            if (status === "suspended") {
+                if (!isSuspendedPage) router.push("/consultations/suspended");
+                return;
+            }
 
             if (!status || status === "none" || status === "pending" || status === "rejected") {
                 if (!isOnboarding) router.push("/consultations/onboarding");
