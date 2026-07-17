@@ -115,13 +115,42 @@ export function AuthProvider({ children }) {
     // ── On mount: restore session from the HttpOnly refresh-token cookie ──────
     useEffect(() => {
         const initAuth = async () => {
+            // Keep retrying for up to 90 seconds — enough to outlast Render's
+            // free-tier cold start (typically 50-60s). Uses exponential backoff
+            // capped at 15s so we don't hammer a starting server.
+            // Only stops early for real 401/403 (no session / invalid token).
+            const refreshWithColdStartTolerance = async () => {
+                const TIMEOUT = 90_000;
+                const start = Date.now();
+                let delay = 2000;
+                let lastError;
+
+                while (Date.now() - start < TIMEOUT) {
+                    try {
+                        return await axios.post(
+                            `${API}/auth/refresh`, {},
+                            { withCredentials: true, timeout: 20000 }
+                        );
+                    } catch (err) {
+                        lastError = err;
+                        const status = err?.response?.status;
+                        // Real auth failure — stop immediately, no point retrying
+                        if (status === 401 || status === 403) throw err;
+                        // Network/timeout — wait and retry if still within window
+                        const remaining = TIMEOUT - (Date.now() - start);
+                        if (remaining > delay) {
+                            await new Promise(r => setTimeout(r, delay));
+                            delay = Math.min(delay * 2, 15000);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                throw lastError;
+            };
+
             try {
-                // FIX: retry on mount too — if the page loads while Render is
-                // cold-starting, the first refresh call can time out, which
-                // previously set user=null and showed the login screen
-                const res = await withRetry(() =>
-                    axios.post(`${API}/auth/refresh`, {}, { withCredentials: true })
-                );
+                const res = await refreshWithColdStartTolerance();
 
                 accessTokenRef.current = res.data.accessToken;
 
@@ -129,14 +158,12 @@ export function AuthProvider({ children }) {
                     setUser(res.data.user);
                 } else {
                     const me = await axios.get(`${API}/auth/me`, {
-                        headers: {
-                            Authorization: `Bearer ${res.data.accessToken}`,
-                        },
+                        headers: { Authorization: `Bearer ${res.data.accessToken}` },
                     });
                     setUser(me.data.user);
                 }
             } catch {
-                // All retries exhausted — no valid session
+                // Genuine failure after full retry window — no valid session
                 setUser(null);
             } finally {
                 setLoading(false);
