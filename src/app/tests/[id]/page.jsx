@@ -368,7 +368,8 @@ function TestAttempt() {
             try { await enterFullscreen(); } catch (e) { console.warn("Fullscreen failed:", e); }
 
             // FIX: Webcam in its own try-catch
-            if (isPaid || testMeta?.type === "paid") {
+            const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+            if ((isPaid || testMeta?.type === "paid") && !isMobile) {
                 try { await startWebcam(); } catch (e) { console.warn("Webcam failed:", e); }
             }
 
@@ -447,7 +448,7 @@ function TestAttempt() {
                         <li>Test runs in <strong>fullscreen mode</strong> — exiting will be flagged</li>
                         <li>Tab switching is detected — <strong>3 violations = auto-submit</strong></li>
                         <li>Right-click and DevTools are disabled</li>
-                        {testMeta?.type === "paid" && <li>📷 Webcam monitoring is active for this premium test</li>}
+                        {testMeta?.type === "paid" && !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && <li>📷 Webcam monitoring is active for this premium test</li>}
                         <li>Questions are uniquely watermarked to your account</li>
                     </ul>
                 </div>
@@ -646,7 +647,7 @@ function TestAttempt() {
                         // Mobile: fixed overlay when palette toggled
                     }} className="test-sidebar">
 
-                        {isPaid && (
+                        {isPaid && typeof window !== "undefined" && !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && (
                             <div>
                                 <p style={{ fontSize: 10, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Webcam</p>
                                 <div style={{ borderRadius: 10, overflow: "hidden", background: "#111", position: "relative", aspectRatio: "4/3" }}>
