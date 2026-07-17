@@ -40,6 +40,50 @@ function getOptionOrder(qId, attemptId) {
     return order;
 }
 
+// ─── LocalStorage helpers ─────────────────────────────────────────────────────
+// Persist answers as the student goes — so a logout/redirect never destroys work.
+const LS_KEY = (testId, attemptId) => `ayurxhub_test_${testId}_${attemptId}`;
+
+const saveAnswersLocally = (testId, attemptId, answers) => {
+    if (typeof window === "undefined" || !testId || !attemptId) return;
+    try {
+        localStorage.setItem(LS_KEY(testId, attemptId), JSON.stringify({ answers, savedAt: Date.now() }));
+    } catch (_) { }
+};
+
+const loadAnswersLocally = (testId, attemptId) => {
+    if (typeof window === "undefined" || !testId || !attemptId) return null;
+    try {
+        const raw = localStorage.getItem(LS_KEY(testId, attemptId));
+        if (!raw) return null;
+        const { answers, savedAt } = JSON.parse(raw);
+        // Discard stale saves older than 4 hours (longer than any test)
+        if (Date.now() - savedAt > 4 * 60 * 60 * 1000) return null;
+        return answers;
+    } catch (_) { return null; }
+};
+
+const clearAnswersLocally = (testId, attemptId) => {
+    if (typeof window === "undefined" || !testId || !attemptId) return;
+    try { localStorage.removeItem(LS_KEY(testId, attemptId)); } catch (_) { }
+};
+
+// ─── Retry helper for submit ──────────────────────────────────────────────────
+const withRetry = async (fn, attempts = 3, delayMs = 2000) => {
+    let lastError;
+    for (let i = 0; i < attempts; i++) {
+        try { return await fn(); }
+        catch (err) {
+            lastError = err;
+            // Don't retry on 4xx except 408/429 (timeout/rate-limit) — those are real errors
+            const status = err?.response?.status;
+            if (status && status >= 400 && status < 500 && status !== 408 && status !== 429) throw err;
+            if (i < attempts - 1) await new Promise(r => setTimeout(r, delayMs * Math.pow(2, i)));
+        }
+    }
+    throw lastError;
+};
+
 // ─── Main component ───────────────────────────────────────────────────────────
 function TestAttempt() {
     const { authAxios, user } = useAuth();
@@ -59,7 +103,11 @@ function TestAttempt() {
     const [reviewMode, setReviewMode] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [testError, setTestError] = useState(null);
-    const [showPalette, setShowPalette] = useState(false); // mobile palette toggle
+    const [showPalette, setShowPalette] = useState(false);
+
+    // Session-expired state — instead of silently redirecting, show a modal
+    // so the student can log back in without losing their answers
+    const [sessionExpired, setSessionExpired] = useState(false);
 
     // Anti-cheat state
     const [tabViolations, setTabViolations] = useState(0);
@@ -74,10 +122,20 @@ function TestAttempt() {
     const canvasRef = useRef(null);
     const faceTimerRef = useRef(null);
     const timerRef = useRef(null);
-    const submitRef = useRef(null); // stable ref for submit in timer
+    const submitRef = useRef(null);
 
     const MAX_VIOLATIONS = 3;
     const isPaid = testMeta?.type === "paid";
+
+    // ── Detect when user is logged out mid-test ──────────────────────────────
+    // Instead of ProtectedRoute silently redirecting and destroying answers,
+    // we catch the null-user state ourselves and show a "session expired" modal
+    // so students can log back in. Their answers are safe in localStorage.
+    useEffect(() => {
+        if (phase === "taking" && !user) {
+            setSessionExpired(true);
+        }
+    }, [user, phase]);
 
     // ── Load test metadata ───────────────────────────────────────────────────
     useEffect(() => {
@@ -93,14 +151,13 @@ function TestAttempt() {
         loadMeta();
     }, [id]); // eslint-disable-line
 
-    // ── Timer — uses ref to avoid stale closure ──────────────────────────────
+    // ── Timer ────────────────────────────────────────────────────────────────
     useEffect(() => {
         if (phase !== "taking") return;
         timerRef.current = setInterval(() => {
             setTimeLeft(prev => {
                 if (prev <= 1) {
                     clearInterval(timerRef.current);
-                    // Use ref so we always call the latest submit
                     if (submitRef.current) submitRef.current(true, "time_up");
                     return 0;
                 }
@@ -128,8 +185,7 @@ function TestAttempt() {
         };
         const handleBlur = () => {
             const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-            if (isMobile) return; // exit before setState entirely — cleanest approach
-
+            if (isMobile) return;
             setTabViolations(prev => {
                 const next = prev + 1;
                 if (next >= MAX_VIOLATIONS) {
@@ -208,8 +264,6 @@ function TestAttempt() {
                 return false;
             }
         };
-
-        // FIX: Only run DevTools detection on desktop (avoid false positives on mobile)
         const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         let devToolsDetect = null;
         if (!isMobile) {
@@ -221,7 +275,6 @@ function TestAttempt() {
                 }
             }, 2000);
         }
-
         document.addEventListener("contextmenu", blockContext);
         document.addEventListener("keydown", blockKeys);
         return () => {
@@ -231,7 +284,7 @@ function TestAttempt() {
         };
     }, [phase]);
 
-    // ── Webcam ───────────────────────────────────────────────────────────────
+    // ── Webcam (desktop only) ─────────────────────────────────────────────────
     const startWebcam = async () => {
         if (!isPaid) return;
         try {
@@ -251,11 +304,10 @@ function TestAttempt() {
         const video = webcamRef.current;
         const canvas = canvasRef.current;
         if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) return;
-
         const ctx = canvas.getContext("2d");
-        canvas.width = webcamRef.current.videoWidth;
-        canvas.height = webcamRef.current.videoHeight;
-        ctx.drawImage(webcamRef.current, 0, 0);
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
         let totalBrightness = 0;
@@ -272,8 +324,7 @@ function TestAttempt() {
             variance += Math.pow(brightness - avgBrightness, 2);
         }
         variance /= samples;
-        const suspicious = avgBrightness < 8 && variance < 10;
-        if (suspicious) {
+        if (avgBrightness < 8 && variance < 10) {
             setWebcamFlags(prev => [...prev, { type: "face_absent", time: new Date().toISOString(), brightness: Math.round(avgBrightness) }]);
             setViolationMsg("📷 Face not detected — please stay in front of the camera.");
             setShowViolationBanner(true);
@@ -311,30 +362,51 @@ function TestAttempt() {
                 questionId: q._id,
                 selectedIndex: answers[q._id] ?? -1,
             }));
-            const res = await authAxios.post(`/tests/${id}/submit`, {
-                attemptId,
-                answers: answersArr,
-                proctoring: {
-                    tabViolations,
-                    webcamFlags,
-                    autoSubmitReason: reason || null,
-                    fullscreenExits: tabViolations,
-                },
-            });
+
+            // FIX: Retry submit up to 3 times with backoff — a single network
+            // hiccup or Render cold-start previously caused permanent answer loss.
+            // If all retries fail, keep answers in localStorage so they aren't lost.
+            const res = await withRetry(() =>
+                authAxios.post(`/tests/${id}/submit`, {
+                    attemptId,
+                    answers: answersArr,
+                    proctoring: {
+                        tabViolations,
+                        webcamFlags,
+                        autoSubmitReason: reason || null,
+                        fullscreenExits: tabViolations,
+                    },
+                })
+            );
+
+            // Submission succeeded — safe to clear local backup
+            clearAnswersLocally(id, attemptId);
+
             setResult(res.data.result);
             setReview(res.data.review);
             setPhase("result");
         } catch (e) {
-            setTestError(e.response?.data?.message || "Submission failed");
+            // All retries failed — don't clear localStorage, answers are still saved.
+            // Show a specific message so the student knows to try again.
+            setTestError(
+                "Submission failed after multiple attempts. Your answers are saved — please try submitting again, or refresh the page and click 'Submit' from the resume screen."
+            );
         } finally {
             setSubmitting(false);
         }
     }, [submitting, attemptId, questions, answers, id, authAxios, tabViolations, webcamFlags]);
 
-    // Keep submitRef in sync so timer can always call latest version
     useEffect(() => { submitRef.current = handleSubmit; }, [handleSubmit]);
 
-    // ── Stop camera stream on unmount (user navigates away mid-test) ─────────
+    // ── Save answers to localStorage on every change ─────────────────────────
+    // This is the critical safety net: even if the session expires, the student
+    // gets redirected, or the browser crashes, answers survive.
+    useEffect(() => {
+        if (phase !== "taking" || !attemptId || !id) return;
+        saveAnswersLocally(id, attemptId, answers);
+    }, [answers, phase, attemptId, id]);
+
+    // ── Stop camera on unmount ────────────────────────────────────────────────
     useEffect(() => {
         return () => {
             if (streamRef.current) {
@@ -344,30 +416,38 @@ function TestAttempt() {
         };
     }, []);
 
-    // ── Start test — FIX: fullscreen in separate try-catch ───────────────────
+    // ── Start test ───────────────────────────────────────────────────────────
     const handleStart = async () => {
         setPhase("loading");
         try {
             const res = await authAxios.post(`/tests/${id}/start`);
-            const { attempt, questions: qs, timeRemaining } = res.data;
+            const { attempt, questions: qs, timeRemaining, previousAnswers } = res.data;
 
             const orders = {};
             qs.forEach(q => { orders[q._id] = getOptionOrder(q._id, attempt._id); });
             setOptOrders(orders);
             setQuestions(qs);
             setAttemptId(attempt._id);
-            setTimeLeft(timeRemaining); // FIX: use timeRemaining from API (handles resume)
-            setAnswers({});
+            setTimeLeft(timeRemaining);
             setCurrentQ(0);
             setTabViolations(0);
 
-            // FIX: Set phase BEFORE fullscreen so test starts even if fullscreen fails
+            // FIX: Restore answers from localStorage first (covers session-expired
+            // resume), then fall back to server-side previousAnswers (covers normal
+            // resume of an in-progress attempt)
+            const localAnswers = loadAnswersLocally(id, attempt._id);
+            if (localAnswers && Object.keys(localAnswers).length > 0) {
+                setAnswers(localAnswers);
+            } else if (previousAnswers && Object.keys(previousAnswers).length > 0) {
+                setAnswers(previousAnswers);
+            } else {
+                setAnswers({});
+            }
+
             setPhase("taking");
 
-            // FIX: Fullscreen in its own try-catch — failure won't block test
             try { await enterFullscreen(); } catch (e) { console.warn("Fullscreen failed:", e); }
 
-            // FIX: Webcam in its own try-catch
             const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
             if ((isPaid || testMeta?.type === "paid") && !isMobile) {
                 try { await startWebcam(); } catch (e) { console.warn("Webcam failed:", e); }
@@ -376,12 +456,10 @@ function TestAttempt() {
         } catch (e) {
             const data = e.response?.data;
             if (data?.requiresEnrollment && data?.batchSlug) {
-                // Redirect to the batch/course page so they can enroll
                 router.push(`/courses/${data.batchSlug}`);
                 return;
             }
             if (data?.requiresPro) {
-                // Redirect to tests page which has the Upgrade to Pro button
                 router.push("/tests");
                 return;
             }
@@ -418,7 +496,6 @@ function TestAttempt() {
         </div>
     );
 
-    // ── INTRO ─────────────────────────────────────────────────────────────────
     if (phase === "intro") return (
         <div style={{ minHeight: "100vh", background: "#f7f9fc", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px 16px" }}>
             <div style={{ background: "#fff", borderRadius: 20, padding: "32px 24px", maxWidth: 520, width: "100%", boxShadow: "0 4px 24px rgba(0,0,0,0.08)" }}>
@@ -448,7 +525,9 @@ function TestAttempt() {
                         <li>Test runs in <strong>fullscreen mode</strong> — exiting will be flagged</li>
                         <li>Tab switching is detected — <strong>3 violations = auto-submit</strong></li>
                         <li>Right-click and DevTools are disabled</li>
-                        {testMeta?.type === "paid" && !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && <li>📷 Webcam monitoring is active for this premium test</li>}
+                        {testMeta?.type === "paid" && !/Android|iPhone|iPad|iPod/i.test(typeof navigator !== "undefined" ? navigator.userAgent : "") && (
+                            <li>📷 Webcam monitoring is active for this premium test</li>
+                        )}
                         <li>Questions are uniquely watermarked to your account</li>
                     </ul>
                 </div>
@@ -476,7 +555,6 @@ function TestAttempt() {
         </div>
     );
 
-    // ── TAKING ────────────────────────────────────────────────────────────────
     if (phase === "taking") {
         const q = questions[currentQ];
         if (!q) return null;
@@ -485,6 +563,38 @@ function TestAttempt() {
 
         return (
             <div style={{ minHeight: "100vh", background: "#f7f9fc", display: "flex", flexDirection: "column", userSelect: "none" }}>
+
+                {/* ── Session-expired modal ────────────────────────────────────────────
+                    Shown instead of silently redirecting away — answers are safe in
+                    localStorage so the student can log back in and resume/resubmit. */}
+                {sessionExpired && (
+                    <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+                        <div style={{ background: "#fff", borderRadius: 20, padding: "28px 24px", maxWidth: 440, width: "100%", textAlign: "center" }}>
+                            <p style={{ fontSize: 40, margin: "0 0 12px" }}>🔐</p>
+                            <h2 style={{ fontSize: 18, fontWeight: 700, color: "#111827", margin: "0 0 8px" }}>Session Expired</h2>
+                            <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 6px", lineHeight: 1.6 }}>
+                                Your login session timed out. <strong>Your answers are saved</strong> — log back in and the test will resume from where you left off.
+                            </p>
+                            <p style={{ fontSize: 12, color: "#9ca3af", margin: "0 0 20px" }}>
+                                {answered} answer{answered !== 1 ? "s" : ""} saved locally · {formatTime(timeLeft)} remaining
+                            </p>
+                            <button
+                                onClick={() => {
+                                    // Open login in a new tab so the test page stays mounted
+                                    // When they log back in, user state restores and this modal closes
+                                    window.open("/login", "_blank");
+                                }}
+                                style={{ width: "100%", padding: "12px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #00256e, #1f3c88)", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 10, fontFamily: "inherit" }}>
+                                Log In Again (opens new tab)
+                            </button>
+                            <button
+                                onClick={() => setSessionExpired(false)}
+                                style={{ width: "100%", padding: "11px", borderRadius: 10, border: "1px solid #e5e7eb", background: "transparent", color: "#374151", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                                Dismiss & Keep Trying
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Violation banner */}
                 {showViolationBanner && (
@@ -528,21 +638,18 @@ function TestAttempt() {
                         <p style={{ fontSize: 11, color: "#9ca3af", margin: 0 }}>Q {currentQ + 1}/{questions.length} · {answered} answered</p>
                     </div>
 
-                    {/* Violations */}
                     <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
                         {[...Array(MAX_VIOLATIONS)].map((_, i) => (
                             <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: i < tabViolations ? "#dc2626" : "#e5e7eb", transition: "background 0.3s" }} />
                         ))}
                     </div>
 
-                    {/* Timer */}
                     <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 20, background: timerBg, border: `1px solid ${timerColor}30`, flexShrink: 0 }}>
                         <span style={{ fontSize: 12 }}>⏱</span>
                         <span style={{ fontSize: "clamp(14px, 4vw, 18px)", fontWeight: 800, color: timerColor, fontVariantNumeric: "tabular-nums" }}>{formatTime(timeLeft)}</span>
                     </div>
 
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        {/* Mobile palette toggle */}
                         <button
                             onClick={() => setShowPalette(p => !p)}
                             style={{ display: "none", padding: "7px 12px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#fff", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}
@@ -561,7 +668,6 @@ function TestAttempt() {
                     {/* Question panel */}
                     <div style={{ flex: 1, padding: "20px clamp(16px, 4vw, 40px)", maxWidth: 720, width: "100%" }}>
 
-                        {/* Progress bar */}
                         <div style={{ height: 4, borderRadius: 2, background: "#f3f4f6", marginBottom: 20, overflow: "hidden" }}>
                             <div style={{ height: "100%", background: "linear-gradient(90deg, #00256e, #1D9E75)", width: `${((currentQ + 1) / questions.length) * 100}%`, transition: "width 0.3s", borderRadius: 2 }} />
                         </div>
@@ -601,8 +707,6 @@ function TestAttempt() {
                             })}
                         </div>
 
-                        {/* Navigation */}
-                        {/* Navigation */}
                         {(() => {
                             const isLast = currentQ === questions.length - 1;
                             return (
@@ -611,9 +715,7 @@ function TestAttempt() {
                                         style={{ padding: "10px 16px", borderRadius: 10, border: "1px solid #e5e7eb", background: "#fff", color: "#374151", fontSize: 13, cursor: currentQ === 0 ? "not-allowed" : "pointer", opacity: currentQ === 0 ? 0.4 : 1, fontFamily: "inherit" }}>
                                         ← Prev
                                     </button>
-
                                     <div style={{ display: "flex", gap: 10 }}>
-                                        {/* Always available, regardless of which question you're on */}
                                         <button onClick={() => handleSubmit(false)} disabled={submitting}
                                             style={{
                                                 padding: "10px 18px", borderRadius: 10,
@@ -624,7 +726,6 @@ function TestAttempt() {
                                             }}>
                                             {submitting ? "Submitting…" : isLast ? "Submit Test ✓" : "Submit Test"}
                                         </button>
-
                                         {!isLast && (
                                             <button onClick={() => setCurrentQ(p => p + 1)}
                                                 style={{ padding: "10px 20px", borderRadius: 10, border: "none", background: "#00256e", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
@@ -636,16 +737,14 @@ function TestAttempt() {
                             );
                         })()}
                         {testError && (
-                            <p style={{ fontSize: 12, color: "#dc2626", marginTop: 8, textAlign: "center" }}>{testError}</p>
+                            <div style={{ padding: "12px 14px", borderRadius: 8, background: "#fee2e2", color: "#991b1b", fontSize: 13, marginTop: 12, lineHeight: 1.6 }}>
+                                {testError}
+                            </div>
                         )}
                     </div>
 
-                    {/* Sidebar — hidden on mobile, shown via overlay */}
-                    <div style={{
-                        width: 200, padding: "16px 12px", background: "#fff", borderLeft: "1px solid #f3f4f6",
-                        flexShrink: 0, display: "flex", flexDirection: "column", gap: 14,
-                        // Mobile: fixed overlay when palette toggled
-                    }} className="test-sidebar">
+                    {/* Sidebar */}
+                    <div style={{ width: 200, padding: "16px 12px", background: "#fff", borderLeft: "1px solid #f3f4f6", flexShrink: 0, display: "flex", flexDirection: "column", gap: 14 }} className="test-sidebar">
 
                         {isPaid && typeof window !== "undefined" && !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && (
                             <div>
@@ -663,7 +762,6 @@ function TestAttempt() {
                             </div>
                         )}
 
-                        {/* Question palette */}
                         <div>
                             <p style={{ fontSize: 10, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Questions</p>
                             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 5 }}>
@@ -691,7 +789,6 @@ function TestAttempt() {
                             </div>
                         </div>
 
-                        {/* Security status */}
                         <div style={{ background: "#f9fafb", borderRadius: 10, padding: "10px 12px" }}>
                             <p style={{ fontSize: 10, fontWeight: 700, color: "#374151", margin: "0 0 8px" }}>🛡️ Security</p>
                             {[
@@ -707,7 +804,6 @@ function TestAttempt() {
                         </div>
                     </div>
 
-                    {/* Mobile palette overlay */}
                     {showPalette && (
                         <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.5)" }} onClick={() => setShowPalette(false)}>
                             <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "#fff", borderRadius: "20px 20px 0 0", padding: 20, maxHeight: "60vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
@@ -742,7 +838,6 @@ function TestAttempt() {
         );
     }
 
-    // ── RESULT ────────────────────────────────────────────────────────────────
     if (phase === "result") return (
         <div style={{ minHeight: "100vh", background: "#f7f9fc" }}>
             <div style={{ maxWidth: 760, margin: "0 auto", padding: "28px 16px" }}>
@@ -758,7 +853,7 @@ function TestAttempt() {
                     </div>
                 )}
 
-                <div style={{ background: "#fff", borderRadius: 20, padding: "28px 20px", marginBottom: 20, border: `2px solid ${result.passed ? "#86efac" : "#fca5a5"}`, boxShadow: `0 4px 24px ${result.passed ? "rgba(134,239,172,0.2)" : "rgba(252,165,165,0.2)"}`, textAlign: "center" }}>
+                <div style={{ background: "#fff", borderRadius: 20, padding: "28px 20px", marginBottom: 20, border: `2px solid ${result.passed ? "#86efac" : "#fca5a5"}`, textAlign: "center" }}>
                     <p style={{ fontSize: "clamp(40px, 10vw, 56px)", margin: "0 0 12px" }}>{result.passed ? "🏆" : "📖"}</p>
                     <h2 style={{ fontSize: "clamp(16px, 4vw, 22px)", fontWeight: 800, color: result.passed ? "#166534" : "#dc2626", margin: "0 0 6px" }}>
                         {result.passed ? "Congratulations! You Passed" : "Keep Practising"}
@@ -766,12 +861,10 @@ function TestAttempt() {
                     <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 20px" }}>
                         {result.timedOut ? "⏰ Auto-submitted — time ran out" : "Test submitted successfully"}
                     </p>
-
                     <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", flexDirection: "column", width: 110, height: 110, borderRadius: "50%", background: result.passed ? "#dcfce7" : "#fee2e2", border: `4px solid ${result.passed ? "#86efac" : "#fca5a5"}`, margin: "0 0 20px" }}>
                         <span style={{ fontSize: 28, fontWeight: 800, color: result.passed ? "#166534" : "#dc2626" }}>{result.percentage}%</span>
                         <span style={{ fontSize: 11, color: result.passed ? "#166534" : "#dc2626" }}>score</span>
                     </div>
-
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
                         {[
                             { label: "Correct", value: result.score, color: "#166534", bg: "#dcfce7" },
@@ -843,11 +936,7 @@ function TestAttempt() {
                     </div>
                 )}
             </div>
-            <style>{`
-                @keyframes spin { to { transform: rotate(360deg); } }
-                @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
-                @keyframes slideDown { from { transform:translateY(-100%); } to { transform:translateY(0); } }
-            `}</style>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
     );
 }
