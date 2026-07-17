@@ -15,6 +15,30 @@ const AuthContext = createContext(null);
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
+// ─── Retry helper ─────────────────────────────────────────────────────────────
+// Retries a promise-returning fn up to `attempts` times with exponential backoff.
+// Only gives up (and propagates the error) after all retries are exhausted.
+// This is the core fix for Render free-tier cold starts: a 50-60s spin-up delay
+// causes the refresh request to time out, which previously triggered an immediate
+// logout. With retries, we wait out the cold start instead.
+const withRetry = async (fn, attempts = 3, delayMs = 2000) => {
+    let lastError;
+    for (let i = 0; i < attempts; i++) {
+        try {
+            return await fn();
+        } catch (err) {
+            lastError = err;
+            // Don't retry on 401/403 — those are real auth errors, not transient failures
+            const status = err?.response?.status;
+            if (status === 401 || status === 403) throw err;
+            if (i < attempts - 1) {
+                await new Promise(r => setTimeout(r, delayMs * Math.pow(2, i)));
+            }
+        }
+    }
+    throw lastError;
+};
+
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -49,10 +73,10 @@ export function AuthProvider({ children }) {
                     original._retry = true;
 
                     try {
-                        const res = await axios.post(
-                            `${API}/auth/refresh`,
-                            {},
-                            { withCredentials: true }
+                        // FIX: retry the refresh up to 3 times with backoff so a
+                        // Render cold-start timeout doesn't cause a false logout
+                        const res = await withRetry(() =>
+                            axios.post(`${API}/auth/refresh`, {}, { withCredentials: true })
                         );
 
                         accessTokenRef.current = res.data.accessToken;
@@ -61,6 +85,7 @@ export function AuthProvider({ children }) {
 
                         return instance(original);
                     } catch {
+                        // Only reach here after all retries failed — genuine session expiry
                         accessTokenRef.current = null;
                         setUser(null);
                     }
@@ -87,13 +112,15 @@ export function AuthProvider({ children }) {
         }
     }, [authAxios]);
 
+    // ── On mount: restore session from the HttpOnly refresh-token cookie ──────
     useEffect(() => {
         const initAuth = async () => {
             try {
-                const res = await axios.post(
-                    `${API}/auth/refresh`,
-                    {},
-                    { withCredentials: true }
+                // FIX: retry on mount too — if the page loads while Render is
+                // cold-starting, the first refresh call can time out, which
+                // previously set user=null and showed the login screen
+                const res = await withRetry(() =>
+                    axios.post(`${API}/auth/refresh`, {}, { withCredentials: true })
                 );
 
                 accessTokenRef.current = res.data.accessToken;
@@ -106,10 +133,10 @@ export function AuthProvider({ children }) {
                             Authorization: `Bearer ${res.data.accessToken}`,
                         },
                     });
-
                     setUser(me.data.user);
                 }
             } catch {
+                // All retries exhausted — no valid session
                 setUser(null);
             } finally {
                 setLoading(false);
@@ -119,6 +146,7 @@ export function AuthProvider({ children }) {
         initAuth();
     }, []);
 
+    // ── Proactive token refresh interval ──────────────────────────────────────
     useEffect(() => {
         if (!user) {
             if (intervalRef.current) {
@@ -128,19 +156,29 @@ export function AuthProvider({ children }) {
             return;
         }
 
+        // FIX 1: Fire at 12 minutes instead of 14 — gives 3 minutes of breathing
+        // room for cold-start delays (Render can take 50-60s to wake up).
+        // The access token itself lives 15 minutes, so 12 → 3min window is safe.
+        //
+        // FIX 2: On failure, retry with backoff before logging out.
+        // A transient Render cold-start timeout previously caused an immediate
+        // logout on every user across every device within 5-10 minutes.
         intervalRef.current = setInterval(async () => {
             try {
-                const res = await axios.post(
-                    `${API}/auth/refresh`,
-                    {},
-                    { withCredentials: true }
+                const res = await withRetry(
+                    () => axios.post(`${API}/auth/refresh`, {}, { withCredentials: true }),
+                    3,    // 3 attempts
+                    3000  // starting delay 3s → 6s → 12s (total up to ~21s)
                 );
-
                 accessTokenRef.current = res.data.accessToken;
+                // Keep user state fresh if the backend returns updated user data
+                if (res.data.user) setUser(res.data.user);
             } catch {
+                // Only reach here if all 3 retries failed — genuine expiry or
+                // the refresh token itself is gone/invalid. Log out cleanly.
                 await logout();
             }
-        }, 14 * 60 * 1000);
+        }, 12 * 60 * 1000); // 12 minutes
 
         return () => {
             if (intervalRef.current) {
